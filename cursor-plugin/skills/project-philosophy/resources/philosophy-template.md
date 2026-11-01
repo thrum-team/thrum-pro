@@ -139,8 +139,8 @@ If you see any of these in your code, **STOP and fix before continuing:**
 ### Before You Start a Task
 
 - [ ] Read the design doc referenced in your prompt
-- [ ] Read the task description (`bd show {TASK_ID}`) — it's your source of
-      truth
+- [ ] Read the task description (`bd show {TASK_ID}`, or `thrum issue show {TASK_ID}` without beads) — it's your
+      source of truth
 - [ ] Search the plan file for your task's implementation code
       (`grep "## Task: {BEAD_ID}" plan-file.md`)
 - [ ] Identify which existing services to wire (do not reimplement)
@@ -148,7 +148,7 @@ If you see any of these in your code, **STOP and fix before continuing:**
 
 ### Before You Close a Task
 
-- [ ] All acceptance criteria in the beads task are satisfied
+- [ ] All acceptance criteria in the task are satisfied
 - [ ] Tests pass (run quality commands from your prompt)
 - [ ] No red flags present in your implementation
 - [ ] Commit message is descriptive

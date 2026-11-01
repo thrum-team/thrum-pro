@@ -31,7 +31,7 @@ The tree above only delivers the memory pointer. The Thrum skills and the
 marketplace, which Copilot CLI installs under `~/.copilot/installed-plugins/`:
 
 ```bash
-copilot plugin marketplace add leonletto/thrum-pro
+copilot plugin marketplace add thrum-team/thrum-pro
 copilot plugin install thrum@thrum
 ```
 

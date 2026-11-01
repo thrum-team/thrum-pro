@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please report security issues via the parent
-[thrum](https://github.com/leonletto/thrum-pro) repository — open a private security
+[thrum](https://github.com/thrum-team/thrum-pro) repository — open a private security
 advisory rather than a public issue. Do not disclose details publicly until a
 fix is available.
 

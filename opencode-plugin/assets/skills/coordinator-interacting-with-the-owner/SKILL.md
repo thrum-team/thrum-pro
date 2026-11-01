@@ -34,6 +34,26 @@ the daemon, about a fact already recorded in the thrum message store.
 1. The human asked you something — answer it.
 2. You need a decision only the human can make — ask it, in one or two lines.
 
+A decision only the human can make goes to the owner by `thrum send`; a pane line is optional and never the
+delivery. Resolve the owner from CONFIG, never hardcode a name:
+
+```bash
+OWNER=$(jq -r '.permission_supervisors[] | select(startswith("@user:"))' .thrum/config.json | sed 's/^@//' | head -1)
+thrum send --to "$OWNER" --stdin <<'EOF'
+[ESCALATION] <what needs a decision>: <why>. Action needed: <what>.
+EOF
+```
+
+- Never write the question only into your own pane.
+- A watcher's escalation that needs the human is forwarded to the owner the same way.
+- A watcher whose own `roster` edit was blocked sends the request to its coordinator, who edits `roster` in the
+  watcher's `watch_params.json`; the watcher confirms on its next read.
+- Verify delivery (`thrum sent --unread`) before assuming it was seen. Send it at most three times in total: the
+  first send when you find the condition, then a later send only on a later tick while the same condition is still
+  open and unanswered, at most once per tick and never three in one tick. Then stop: never raise the same condition
+  more than three times.
+- Agent-to-agent status rules are unchanged.
+
 There is no third case. Never narrate what you did, what an agent said, what
 you decided, what you are about to do, or what you are waiting on. The thrum
 message store is already the audit trail — a human who wants to know can read

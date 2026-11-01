@@ -183,18 +183,26 @@ digraph when_to_use {
 
 ## Prerequisites
 
-Two prereqs must be satisfied before project-setup proceeds. Bail on either
-rather than trying to work around it.
+Two prereqs must be satisfied before project-setup proceeds.
 
-### Beads (bd) installed
+### Issue tracker
 
-Verify beads is installed:
+Choose the tracker before anything else:
 
 ```bash
-bd version
+bd version; test -d .beads && echo beads-dir; true
 ```
 
-If `bd` is not found, stop and tell the user:
+Also read the project's own instructions in full (AGENTS.md, CLAUDE.md, role rules in your briefing), not a filtered
+search, for a wrapper they name for running `bd`.
+
+- `bd version` works, or those instructions name a wrapper that exists here: use beads, as written in the rest of this
+  skill, through the wrapper if there is one.
+- No `bd` and no wrapper, but `.beads/` exists: this project uses beads. Stop and tell the user the text below.
+- None of them: use `thrum issue`, built into thrum, with the table under "Without beads". Do not install anything.
+  Tell the user once that this project has no beads and you are using `thrum issue`.
+
+If there is no `bd` and no wrapper and `.beads/` exists, tell the user:
 
 > project-setup requires beads (`bd`) for task tracking with dependencies.
 > Install it:
@@ -213,8 +221,34 @@ If `bd` is not found, stop and tell the user:
 > with it, migrate the repo to embedded mode (see the Beads Migration to Embedded
 > Mode guide in the Thrum docs) before running any `bd` command.
 
-Do not proceed without beads. Do not fall back to markdown task lists or
-TodoWrite.
+Do not fall back to markdown task lists or TodoWrite on either tracker.
+
+#### Without beads
+
+Everywhere this skill says `bd`, read the right-hand column, and read "bead" as "issue". Native ids are ULIDs. Skip the
+`bd where` and `.beads/redirect` steps and their Troubleshooting entries. Fill `resources/implementation-agent.md` as its
+top section says. Paste this table into any other sub-agent prompt.
+
+| beads | thrum issue |
+| --- | --- |
+| `bd create --title=T --type=X --priority=N --description=D` | `thrum issue add --title T --type X --priority N --body D` |
+| `--body-file F` | `--body` with an inline quoted heredoc, below (a bare `$(cat F)` is denied by the thrum command guard) |
+| child of an epic, `--parent E` | `thrum issue add ... --parent E` |
+| `bd dep add <later> <earlier>` | `thrum issue dep <earlier> --blocks <later>` (order reverses) |
+| `bd show ID` | `thrum issue show ID` |
+| `bd list --status=S`, `--type=T` | `thrum issue list --status S`, `--type T` (a list with no `--status` includes closed) |
+| `bd ready` | `thrum issue ready` (also lists in-progress items) |
+| `bd blocked` | No command. `dep` refuses cycles; check an item is absent from `ready`. Blocking edges cannot be listed, so note cross-epic edges as you create them. |
+| `bd dep tree E`, `--children` | `thrum issue list --parent E`. Blocking edges cannot be listed. |
+
+A long body goes in a quoted heredoc:
+
+```bash
+thrum issue add --title T --type task --body "$(cat <<'EOF'
+description text
+EOF
+)"
+```
 
 ### Implementation Philosophy Doc
 

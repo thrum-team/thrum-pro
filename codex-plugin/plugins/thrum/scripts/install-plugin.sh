@@ -20,9 +20,9 @@
 #
 # Environment overrides:
 #   THRUM_INSTALL_REF        Git ref to install (default: main)
-#   THRUM_INSTALL_REPO       Repo source (default: "leonletto/thrum-pro")
+#   THRUM_INSTALL_REPO       Repo source (default: "thrum-team/thrum-pro")
 #                            Plugin installs come from the public thrum-pro
-#                            marketplace, never from leonletto/thrum-pro.
+#                            marketplace, never from thrum-team/thrum-pro.
 #
 # Idempotent: safe to run multiple times. Re-running pulls the latest revision
 # of the configured ref and re-stages the cache.
@@ -31,7 +31,7 @@ set -uo pipefail
 
 MARKETPLACE_NAME="thrum-marketplace"
 PLUGIN_NAME="thrum"
-REPO="${THRUM_INSTALL_REPO:-leonletto/thrum-pro}"
+REPO="${THRUM_INSTALL_REPO:-thrum-team/thrum-pro}"
 REF="${THRUM_INSTALL_REF:-main}"
 CODEX_HOME="${CODEX_HOME:-${HOME}/.codex}"
 CONFIG="${CODEX_HOME}/config.toml"
@@ -296,15 +296,50 @@ fi
 #    case. Fail closed on it, mirroring this file's own `|| die "..."` idiom
 #    used everywhere else (see steps 2, 3-6) — a failing profile setup must
 #    never be swallowed into a "✓ Plugin installed" success banner.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "${SCRIPT_DIR}/ensure-permission-profile.sh" ]]; then
-  bash "${SCRIPT_DIR}/ensure-permission-profile.sh" \
-    || die "ensure-permission-profile.sh failed; the thrum-workspace permission profile was NOT applied. Add it manually (see INSTALL.md's \"Sandbox permission profile\" section) or fix the reported error and re-run this installer."
+#    Under `bash <(curl ...)` BASH_SOURCE is /dev/fd/N, so no sibling file exists:
+#    use the copy just staged under CACHE_DIR first, then a sibling of this file
+#    (a checkout run), and fail when neither exists.
+SCRIPT_DIR=""
+if script_parent="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"; then SCRIPT_DIR="${script_parent}"; fi
+profile_script=""
+for candidate in "${CACHE_DIR}/scripts/ensure-permission-profile.sh" "${SCRIPT_DIR:+${SCRIPT_DIR}/ensure-permission-profile.sh}"; do
+  if [[ -n "${candidate}" && -f "${candidate}" ]]; then
+    profile_script="${candidate}"
+    break
+  fi
+done
+[[ -n "${profile_script}" ]] \
+  || die "ensure-permission-profile.sh not found in ${CACHE_DIR}/scripts or beside this installer; the thrum-workspace permission profile was NOT applied and Codex would block thrum commands. Re-run the installer after fixing the plugin payload, or add the profile manually (see INSTALL.md's \"Sandbox permission profile\" section)."
+profile_rc=0
+profile_out="$(bash "${profile_script}" 2>&1)" || profile_rc=$?
+[[ -z "${profile_out}" ]] || printf '%s\n' "${profile_out}"
+[[ "${profile_rc}" -eq 0 ]] \
+  || die "ensure-permission-profile.sh failed; the thrum-workspace permission profile was NOT applied. Add it manually (see INSTALL.md's \"Sandbox permission profile\" section) or fix the reported error and re-run this installer."
+
+# The helper exits 0 both when it set a profile up and when it found no .thrum/
+# to set up. Say which happened: the profile is per repo.
+profile_dir="$(printf '%s\n' "${profile_out}" | sed -n 's|^→ ✓ thrum-workspace read grant ensured for: \(.*/\.thrum\)$|\1|p' | head -n 1)"
+if [[ -z "${profile_dir}" ]]; then
+  install_banner="Plugin files installed at ${CACHE_DIR}
+
+⚠ Codex is NOT set up for a thrum repo yet: no .thrum/ was found from $(pwd).
+  Re-run this installer from inside your repo. Otherwise the first Codex
+  session in your repo stops once and asks for a restart."
+else
+  install_banner="✓ Plugin installed at ${CACHE_DIR}
+
+✓ Codex permission profile set up for: ${profile_dir}"
+  if [[ "${profile_dir}" == "${HOME}/.thrum" ]]; then
+    install_banner="${install_banner}
+⚠ That is your home directory's .thrum, not a repo. Re-run this installer from
+  inside your repo. Otherwise the first Codex session in your repo stops once
+  and asks for a restart."
+  fi
 fi
 
 cat <<EOF
 
-✓ Plugin installed at ${CACHE_DIR}
+${install_banner}
 
 Next steps (interactive — only the user can do these):
   1. Restart your codex agent (run \`codex\` in a fresh shell, or restart your IDE).

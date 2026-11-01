@@ -18,6 +18,7 @@ case "${adapter}:${operation}" in
   codex:block-tls-key-exfil) legacy_script=block-tls-key-exfil.sh; blocking=1 ;;
   codex:stop-check-messages) legacy_script=stop-check-messages.sh ;;
   codex:memory-pointer) legacy_script=memory-pointer.sh ;;
+  codex:hooklog-capture-pre|codex:hooklog-capture-post) legacy_script=hooklog-capture.sh ;;
   *)
     printf 'Thrum Codex hook: unsupported adapter/operation %s/%s\n' "$adapter" "$operation" >&2
     exit 1

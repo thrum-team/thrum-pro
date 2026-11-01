@@ -49,6 +49,12 @@ thrum log search <logname> <query> [-i] [-n N]
 thrum log search hooklog "thrum daemon start" -n 5
 ```
 
+What an agent ran: Thrum commands, `thrum log search command <agent>`, all
+runtimes. Tool and shell calls, `thrum log search hooklog <query>`, on the
+runtimes the hook log covers: Claude Code, Codex, Cursor, OpenCode, Muse, and
+Copilot in a project set up for Claude Code (Copilot calls are not paired:
+`pre_post_unlinked`).
+
 Brute-force line scan of **today's file only**. Older history is in `.gz`
 rotations under `.thrum/var/log/` — unzip and search those directly.
 

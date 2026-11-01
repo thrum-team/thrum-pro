@@ -308,16 +308,14 @@ resolve_roster_targets() {
 build_topology_table
 resolve_roster_targets
 
-# Fork default (coordinator-resolved plan): if EVERY roster
-# agent failed resolution, that is itself worth surfacing as a real
-# problem (likely a fleet-wide topology/agent_pool data gap), not a clean
-# tick -- flip the summary line's marker so `--match` treats it as a
-# monitor-level FAIL rather than routine per-agent degradation. This is
-# ORTHOGONAL to whether local capture actually needs the fallback this
-# run -- it fires on a total resolution outage regardless.
+# Fork default (coordinator-resolved plan): a total outage is worth surfacing
+# as a real problem, not a clean tick: the summary line's marker flips so
+# `--match` treats it as a monitor-level FAIL. An outage means no ssh-fallback
+# target resolved AND no local capture produced output. A local capture that
+# worked is not a failure, so the flip is decided after the capture loop.
 RESOLUTION_ALL_FAILED=0
+CAPTURED_OK=0
 if [ "${RESOLVED_COUNT}" -eq 0 ]; then
-  RESOLUTION_ALL_FAILED=1
   log "WARN: ALL ${#ROSTER[@]} roster agent(s) failed ssh-fallback target resolution this run"
 fi
 
@@ -349,7 +347,10 @@ for agent in "${ROSTER[@]}"; do
   CAP1="${WORKDIR}/${agent}.cap1"
   CAP2="${WORKDIR}/${agent}.cap2"
 
-  if ! capture_agent "${agent}" "${CAP1}" "${ROSTER_IDX}"; then
+  CAP1_OK=0
+  if capture_agent "${agent}" "${CAP1}" "${ROSTER_IDX}"; then
+    CAP1_OK=1
+  else
     log "agent=${agent} WARN capture failed (exit code), recording report entry anyway"
   fi
 
@@ -364,6 +365,7 @@ for agent in "${ROSTER[@]}"; do
     continue
   fi
 
+  [ "${CAP1_OK}" -eq 0 ] || CAPTURED_OK=$((CAPTURED_OK + 1))
   STATUS="clean"
   MATCH_NAME=""
 
@@ -407,14 +409,18 @@ for agent in "${ROSTER[@]}"; do
   ROSTER_IDX=$((ROSTER_IDX + 1))
 done
 
+if [ "${RESOLVED_COUNT}" -eq 0 ] && [ "${CAPTURED_OK}" -eq 0 ]; then
+  RESOLUTION_ALL_FAILED=1
+fi
+
 log "DONE flagged=${FLAGGED} resolved=${RESOLVED_COUNT}/${#ROSTER[@]} report=${REPORT_FILE}"
 
 # One matchable line for `thrum monitor --match` to catch and deliver.
-# Two shapes: the routine tick, and the resolution-outage marker from the
+# Two shapes: the routine tick, and the outage marker from the
 # fork default above -- SKILL.md's registration example's --match regex
 # must cover BOTH ("^watch-tick: (cycle done|RESOLUTION-FAIL)").
 if [ "${RESOLUTION_ALL_FAILED}" -eq 1 ]; then
-  echo "watch-tick: RESOLUTION-FAIL $(date -u +%Y-%m-%dT%H:%M:%SZ) -- ${#ROSTER[@]} agent(s), 0 ssh-fallback targets resolved -- report: ${REPORT_FILE}"
+  echo "watch-tick: RESOLUTION-FAIL $(date -u +%Y-%m-%dT%H:%M:%SZ) -- ${#ROSTER[@]} agent(s), 0 ssh-fallback targets resolved, 0 local captures -- report: ${REPORT_FILE}"
 else
   echo "watch-tick: cycle done $(date -u +%Y-%m-%dT%H:%M:%SZ) -- ${#ROSTER[@]} agent(s), ${FLAGGED} flagged, ${RESOLVED_COUNT} ssh-fallback-ready -- report: ${REPORT_FILE}"
 fi

@@ -1,6 +1,6 @@
 {
   "name": "opencode-thrum-pro",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "description": "Thrum multi-agent coordination plugin for Open Code",
   "type": "module",
   "main": "./dist/index.js",
@@ -36,7 +36,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/leonletto/thrum-pro.git",
+    "url": "git+https://github.com/thrum-team/thrum-pro.git",
     "directory": "opencode-plugin"
   },
   "peerDependencies": {

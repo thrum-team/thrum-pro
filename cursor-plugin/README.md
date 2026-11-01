@@ -14,7 +14,7 @@ Add the repository marketplace with Cursor Agent CLI:
 ```bash
 curl https://cursor.com/install -fsS | bash
 agent login
-agent plugin marketplace add --git-ref main https://github.com/leonletto/thrum-pro.git
+agent plugin marketplace add --git-ref main https://github.com/thrum-team/thrum-pro.git
 agent
 ```
 
@@ -38,7 +38,8 @@ cursor-plugin/local-install.sh --target /path/to/project
 This deploys into `.cursor/` with:
 
 - **rules/** — `.mdc` files for sync worktree safety and session lifecycle
-- **hooks.json** — shell guard (two commands) and stop check (one command)
+- **hooks.json** — shell guard (two commands), stop check (one command), and hook-log capture
+  (`preToolUse`, `postToolUse`, `postToolUseFailure`)
 - **mcp.json** — Thrum MCP server configuration
 - **skills/** — Thrum skills (generated at build time)
 - **commands/** — Thrum commands (generated at build time)
@@ -49,7 +50,7 @@ This deploys into `.cursor/` with:
 
    ```bash
    agent plugin marketplace remove thrum
-   agent plugin marketplace add --git-ref main https://github.com/leonletto/thrum-pro.git
+   agent plugin marketplace add --git-ref main https://github.com/thrum-team/thrum-pro.git
    ```
 
 2. In Cursor Agent, open `/plugin`, go to **Marketplace**, select `thrum`, and choose **Install for you**.
@@ -74,5 +75,5 @@ cursor-plugin/local-install.sh
 | `rules/thrum-safety.mdc`  | Blocks writes to internal sync worktree         |
 | `rules/thrum-session.mdc` | Session lifecycle reminders                     |
 | `hooks/hooks.json`        | Hook template (paths resolved at install)       |
-| `scripts/*.sh`            | Hook scripts (3 registered in hooks.json)       |
+| `scripts/*.sh`            | Hook scripts (5 registered in hooks.json)       |
 | `local-install.sh`        | Installer that deploys to `.cursor/`            |

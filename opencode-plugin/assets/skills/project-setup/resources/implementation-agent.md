@@ -1,5 +1,40 @@
 # Implementation Agent Template
 
+<!-- STRIP THIS SECTION — it is for the coordinator filling the template, not
+     for the implementation agent. -->
+
+## Filling this template: issue tracker
+
+Delete this section from the filled prompt.
+
+If this project has no `bd`, no wrapper for `bd` named in its instructions and no `.beads/`, replace every `bd`
+command in the prompt with its form below, and "bead" with "issue". Otherwise leave them unchanged. Ids are ULIDs;
+`thrum issue add` prints `Created <id>: <title>`, read the id from that line.
+
+| beads | thrum issue |
+| --- | --- |
+| `bd show ID` | `thrum issue show ID` (no comments are shown) |
+| `bd show EPIC`, which tasks are done, in progress, pending | `thrum issue list --parent EPIC` (status is column 2; closed tasks are included) |
+| `bd show EPIC`, which tasks are pending and unblocked | `thrum issue ready --parent EPIC` (also lists in-progress tasks) |
+| `bd list --status=S` | `thrum issue list --status S` (`open`, `in_progress`, `closed`) |
+| `bd list --type=epic` | `thrum issue list --type epic` |
+| `bd update ID --status=in_progress` | `thrum issue update --id ID --status in_progress` (`thrum issue claim ID` only records you as worker and leaves the status `open`) |
+| `bd close ID` | `thrum issue close --id ID` |
+| `bd close A B C` | one `thrum issue close --id X` per id; a repeated `--id` closes only the last |
+| `bd close ID --reason=R` | `thrum issue close --id ID --reason "R"` (no command shows the reason; repeat it in your DONE message) |
+| `bd update ID --notes=N` | `thrum issue comment --id ID --body "N"` (no command shows comments; repeat the text in your `thrum send`) |
+| `bd create ... --body-file F` | `thrum issue add --title T --type task --parent E --priority 3 --body` with an inline quoted heredoc, below (a bare `$(cat F)` is denied by the thrum command guard) |
+| blocked by another task | `thrum issue dep BLOCKER --blocks TASK` (order reverses against `bd dep add`) |
+
+`update`, `close` and `comment` take `--id ID`; `show`, `dep` and `claim` take the id as an argument.
+
+```bash
+thrum issue add --title T --type task --parent E --priority 3 --body "$(cat <<'EOF'
+description text
+EOF
+)"
+```
+
 ## Purpose
 
 Guide an agent through implementing an epic's tasks in a designated worktree.

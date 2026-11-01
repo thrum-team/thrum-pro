@@ -8,7 +8,7 @@ before the first turn.
 ## Install
 
 ```bash
-codex plugin marketplace add leonletto/thrum-pro
+codex plugin marketplace add thrum-team/thrum-pro
 codex plugin add thrum@thrum-marketplace
 ```
 
@@ -28,7 +28,7 @@ and one-time migration notes.
 ## Repository
 
 Source of truth for skills, commands, and hook contracts is the parent
-[thrum](https://github.com/leonletto/thrum-pro) repository. Most contents under
+[thrum](https://github.com/thrum-team/thrum-pro) repository. Most contents under
 `skills/` are generated from the canonical skill sources during plugin maintenance.
 
 ## Security
@@ -37,4 +37,4 @@ Report vulnerabilities via the parent repository's issue tracker.
 
 ## License
 
-Apache-2.0 — see the [thrum-pro repository LICENSE](https://github.com/leonletto/thrum-pro/blob/main/LICENSE).
+Apache-2.0 — see the [thrum-pro repository LICENSE](https://github.com/thrum-team/thrum-pro/blob/main/LICENSE).

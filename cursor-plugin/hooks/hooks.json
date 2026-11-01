@@ -13,10 +13,29 @@
         "timeout": 5
       }
     ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "command": "${CURSOR_PLUGIN_ROOT}/scripts/hooklog-capture.sh",
+        "timeout": 5
+      }
+    ],
     "postToolUse": [
       {
         "type": "command",
         "command": "${CURSOR_PLUGIN_ROOT}/scripts/memory-pointer.sh --out cursor",
+        "timeout": 5
+      },
+      {
+        "type": "command",
+        "command": "${CURSOR_PLUGIN_ROOT}/scripts/hooklog-capture.sh",
+        "timeout": 5
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "type": "command",
+        "command": "${CURSOR_PLUGIN_ROOT}/scripts/hooklog-capture.sh",
         "timeout": 5
       }
     ],

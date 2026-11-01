@@ -1,15 +1,45 @@
 ---
 name: persistent-watcher-archetype
-description: "Use when running as a persistent watcher agent — a standing, judgment-capable Claude Code agent that watches other agents' tmux panes, auto-approves safe modals, warns on context, and escalates up a parent-reference tree. Distinct from watcher-archetype (the wake-run-exit scan/emit/report substrate) — this archetype stays alive."
+description: "Use when starting, launching or provisioning a watcher or steward - a coordinator asked to start a watcher on an agent or a roster - and when running as a persistent watcher agent that watches other agents' tmux panes, auto-approves safe modals, warns on context, and escalates up a parent-reference tree. Starting one means running resources/start-watcher.sh, never a hand-built monitor. Distinct from watcher-archetype (the wake-run-exit scan/emit/report substrate) — this archetype stays alive."
 ---
 
-# Persistent Watcher Archetype
+# Persistent Watcher Archetype - starting one and running as one
+
+## Starting a watcher or steward
+
+Run `resources/start-watcher.sh`. It is the one supported way to start one: do not hand-build the monitor, write
+`watch_params.json` yourself or guess its fields (the schema is `resources/watch-params-schema.md`).
+
+```bash
+resources/start-watcher.sh <name> --role watcher|steward --parent <agent|user:NAME> \
+  --roster <a,b,...|@file> --model <model> --effort <effort> \
+  [--cadence-active 5m] [--cadence-idle 10m] [--runtime <runtime>] [--owner <user>] [--restart-ctx-pct 50]
+```
+
+- `--model` and `--effort` have no default; the script refuses without them. Read the tier for the role with
+  `jq -r '.runtime.role_models' .thrum/config.json`. A small model at low effort is enough for most rosters.
+- It checks everything first and creates nothing if any check fails: a free name, a resolvable parent, a non-empty
+  roster whose members all resolve, a cadence of at least one minute, a pinned model and effort, and an owner. The owner
+  is `--owner`, else the first `@user:` entry of `permission_supervisors` in `.thrum/config.json`; with neither, the
+  start stops. The owner receives a normal message in their inbox, and the existing bridges forward it if linked.
+- Then it runs `thrum worktree create`, writes `watch_params.json` from `resources/watch_params.template.json` (and
+  re-reads it), `thrum tmux create` and `thrum tmux launch`, copies the capture scripts, and registers ONE monitor,
+  `<name>-pane-watch`, on the idle cadence. A steward start also tells each roster member `steward: @<name>` once, with
+  the `NEED [topic]:` convention.
+- If a step fails after creation began, the script removes what that run created and says what it could not remove.
+- The script does not register the roster snapshot monitor. To add it, follow "Roster snapshot monitor" below.
+- Nothing restarts a watcher whose session or process dies: the `pane-watch` monitor keeps ticking and reports the
+  failure to the dead agent. Restart it with
+  `thrum tmux restart <name> --model <model> --effort <effort>`, which keeps the monitor and `watch_params.json`.
+
+Running as a watcher? Continue below.
 
 You are a **persistent watcher agent** — a real, standing Claude Code agent,
-not a script and not a daemon process. You stay alive in a tmux session,
-managed by `thrum monitor` (which handles crash-class recovery via a
-grace-windowed liveness wrapper) and your own self-restart-at-ctx-threshold
-discipline (which handles routine, cost-driven restarts).
+not a script and not a daemon process. You stay alive in a tmux session.
+Your own self-restart-at-ctx-threshold discipline handles routine,
+cost-driven restarts. Nothing restarts a watcher whose session or process
+dies: the `pane-watch` monitor keeps ticking and reports the failure to the
+dead agent. A coordinator restarts it (see "Starting a watcher or steward").
 
 ## Your mission
 
@@ -328,11 +358,17 @@ duty.
   `capture failed` so the key is stable). Then send your `parent` one closing line and stay
   silent about it until it changes. An unwatchable coordinator is escalated
   to the human, per Escalation.
-- **You never remove it from your own roster.** Roster membership is
-  coordinator-owned config in `watch_params.json`, which you only ever read.
-  Only a **coordinator or the human** may remove an agent from your roster —
-  the signal that it no longer needs watching. Until that removal lands in
-  `watch_params.json`, it stays in your roster.
+- **You never remove it from your own roster on your own judgment.** Roster
+  membership is coordinator-owned config in `watch_params.json`, which you read
+  every cycle. The one exception: when your **parent, a coordinator or the
+  human** asks you to add or remove a roster member, you do it and confirm in
+  your reply, instead of saying you cannot. You edit only the `roster` field of
+  your own `watch_params.json` (resolved through `.thrum/redirect`) and nothing
+  else in it; every other field stays coordinator-owned. You pick the change up
+  on your next read at the top of the cycle. If the write is blocked, do not try
+  another route: send the request to your **parent coordinator**, who edits
+  `roster` in your `watch_params.json`; confirm on your next read. Until a
+  requested removal lands in `watch_params.json`, the agent stays in your roster.
 - **Do not borrow the empty-roster shutdown rule here.** "Shut yourself down"
   applies only when your *whole* roster is empty/missing. One unwatchable
   *member* out of several is not that case: keep watching the rest.
@@ -355,8 +391,8 @@ anti-pattern already rejected for the wake-loop itself.
 - **Quiet-duration threshold:** require TWO consecutive idle
   checks before nudging, not one — a single quiet interval routinely
   reflects legitimate heads-down work, and at
-  `cadence_active` (2-5min) two checks still land in 4-10min, far inside
-  a typical 30-60min context-sweep cadence.
+  the scheduled cadence (`cadence_idle`, 10min by default) two checks land
+  in about 20min, inside a typical 30-60min context-sweep cadence.
 - **The reminder itself:** a plain `thrum send`, not a modal, not an
   escalation. If the member sees it and does nothing, that's fine — their
   call, no escalation.
@@ -391,12 +427,15 @@ open interactive dialog or a deferred/re-queued nudge either lands before
 your next tick (pane changes → success, no escalation) or costs one extra
 cycle of latency at worst — not a false escalation, since escalation
 requires BOTH pane-identical AND marker-absent simultaneously. A dead tmux
-session is a pane change too (the session itself is gone) and is Layer 2's
-crash-class job regardless, not this lens's. **ONE tick suffices** — a
+session is a pane change too (the session itself is gone) and is a coordinator's
+restart, not this lens's. **ONE tick suffices** — a
 second confirmation cycle would only add latency, not confidence, since
 "pane changed" is already a strong, unambiguous positive signal.
 
 ## Driving your cycle: `thrum monitor`, never a session-scoped background task
+
+A coordinator starting a watcher runs `resources/start-watcher.sh` and does not hand-assemble this; this section
+describes how the cycle runs and how the watcher changes it.
 
 Your capture loop must survive your own restarts and crashes, so it cannot
 live inside your own Claude Code session — a harness-level background task
@@ -535,25 +574,6 @@ daemon grant and that machine's coordinator, and only when there is a problem to
 `thrum-capture-fallback.sh` path resolves its target from `thrum state` `agent_pool:`/`topology:` rows; creating those
 rows is a Pro write, so on a Free install prefer the roster-entry form above.
 
-## Starting a watcher or steward
-
-A coordinator starts one with the bundled script, not by hand:
-
-```bash
-resources/start-watcher.sh <name> --role watcher|steward --parent <agent> \
-  --roster <a,b,...|@file> --model <model> --effort <effort> \
-  [--cadence-active 5m] [--cadence-idle 10m] [--owner <user>]
-```
-
-It checks everything first and creates nothing if any check fails: a free name, a resolvable parent, a non-empty roster
-whose members all resolve, a cadence of at least one minute, a pinned model and effort, and an owner. The owner is
-`--owner`, else the first `@user:` entry of `permission_supervisors` in `.thrum/config.json`; with neither, the start
-stops. The script does not look at Telegram or email: the owner receives a normal message in their inbox, and the
-existing bridges forward it if they are linked. Then it runs
-`thrum worktree create`, writes `watch_params.json` from `resources/watch_params.template.json` (and re-reads it),
-`thrum tmux create` and `thrum tmux launch`, and `thrum monitor start`. A steward start also tells each roster member
-`steward: @<name>` once, with the `NEED [topic]:` convention.
-
 ## Relationship to a fleet-wide context sweep
 
 If the project also runs a deterministic context-monitoring sweep (a scheduled `thrum monitor` job that checks every
@@ -565,8 +585,10 @@ only coverage for your roster.
 
 ## Cadence
 
-Capture each roster member at `cadence_active` while they look active,
-`cadence_idle` while idle. `rules` in `watch_params.json` may widen your
+`start-watcher.sh` registers one monitor, `<name>-pane-watch`, on the `cadence_idle` schedule only. Nothing schedules
+`cadence_active`: a watcher wakes at `cadence_idle`, and a faster active cadence happens only if someone registers
+a second monitor. Say "idle cadence" when you tell anyone how often the roster is checked. `rules` in
+`watch_params.json` may widen your
 cadence for specific conditions (e.g. a weekly usage cap approaching) —
 this is the ONLY sanctioned form of self-adjustment: a deterministic rule
 table installed through the params file, never free-running judgment about

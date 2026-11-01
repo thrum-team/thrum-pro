@@ -76,12 +76,28 @@ AGENT_ID="${AGENT_ID//\`/}"
 AGENT_ROLE="${AGENT_ROLE//\`/}"
 AGENT_MODULE="${AGENT_MODULE//\`/}"
 
-PRIME_OUTPUT=$(thrum prime 2>/dev/null || true)
+# Capture prime's stderr: the failure reason was discarded before, so a failed
+# auto-injection could not be diagnosed. The cause of the intermittent failure
+# is UNPROVEN (a race with `thrum session start` is traced in source, not
+# reproduced). Retry ONCE, only when the shared SessionStart deadline (if any)
+# leaves room, then keep the LAST stderr line for the fallback text.
+PRIME_ERR=$(mktemp 2>/dev/null) || PRIME_ERR=/dev/null
+PRIME_OUTPUT=$(thrum prime 2>"$PRIME_ERR" || true)
+if [ -z "$PRIME_OUTPUT" ] && { [ -z "${THRUM_SESSIONSTART_DEADLINE:-}" ] || [ $(( $(date +%s) + 1 )) -lt "$THRUM_SESSIONSTART_DEADLINE" ]; }; then
+  sleep 1
+  PRIME_OUTPUT=$(thrum prime 2>"$PRIME_ERR" || true)
+fi
+PRIME_ERR_LINE=""
+if [ -z "$PRIME_OUTPUT" ]; then
+  PRIME_ERR_LINE=$(grep -v '^[[:space:]]*$' "$PRIME_ERR" 2>/dev/null | tail -n 1 | tr -d '\r' | tail -c 300 || true)
+fi
+if [ "$PRIME_ERR" != /dev/null ]; then rm -f "$PRIME_ERR"; fi
 
 if [ -z "$PRIME_OUTPUT" ]; then
   # Prime failed (daemon down, slow, etc.) — fall back to the manual
   # nudge so session start never blocks on a broken thrum.
   echo "Run /thrum:prime to load your session context, identity, and any restart snapshots."
+  if [ -n "$PRIME_ERR_LINE" ]; then echo "(Last \`thrum prime\` error: ${PRIME_ERR_LINE})"; fi
   echo "(Auto-injection failed — daemon may be unreachable. Run \`thrum daemon status\` to check.)"
   exit 0
 fi

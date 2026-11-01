@@ -2,7 +2,11 @@
 
 Per-watcher config file at `.thrum/agents/<watcher>/watch_params.json` (resolved through `.thrum/redirect` from a
 worktree, never a bare relative path). One file per watcher or steward; a watcher is the only reader of its own file and
-a coordinator (or the human) is its only writer. The watcher re-reads it at the top of every cycle and after every
+a coordinator (or the human) is its writer. The one exception: when its parent, a coordinator or the human asks it to
+add or remove a roster member, the watcher edits only the `roster` field of its own file and confirms in its reply. If
+the write is blocked, it tries no other route: it sends the request to its coordinator, who edits `roster`, and it
+confirms on its next read.
+The watcher re-reads it at the top of every cycle and after every
 self-restart: the file is truth, and a message about a parameter change is only a nudge.
 
 If the file itself is missing, or `roster` is missing or empty, the watcher is not provisioned: it sends one

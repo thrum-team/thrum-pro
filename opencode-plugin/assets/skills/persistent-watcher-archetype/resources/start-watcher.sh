@@ -4,8 +4,8 @@
 # A coordinator runs this once per watcher/steward. It checks everything
 # first and creates nothing when any check fails, then uses existing thrum
 # commands in a fixed order: worktree create, write watch_params.json,
-# tmux create, tmux launch, monitor start. The agent's first act is /loop, by
-# which time its params file already exists.
+# tmux create, tmux launch, monitor start. The pane-watch monitor's ticks wake
+# the agent; its params file exists before the first tick.
 #
 # Usage:
 #   start-watcher.sh <name> --role watcher|steward --parent <agent|user:NAME> \
@@ -30,8 +30,10 @@
 # redirect-resolved .thrum directory).
 #
 # Exit status: 0 started and verified; 2 refused before creating anything;
-# 1 a step failed after creation began (what exists is printed; nothing is
-# cleaned up automatically).
+# 1 a step failed after creation began. A failure removes what this run
+# created (monitor, tmux session, agent registration, params directory,
+# worktree), tracked by recorded path; anything that existed before the run is
+# never touched. If a removal itself fails, the script says what was left.
 set -uo pipefail
 
 THRUM="${THRUM_BIN:-thrum}"
@@ -175,36 +177,79 @@ fi
 # --- start, in order -------------------------------------------------------
 AGENT_DIR="${T}/agents/${NAME}"
 PARAMS="${AGENT_DIR}/watch_params.json"
+[ ! -e "${AGENT_DIR}" ] || die "${AGENT_DIR} already exists; remove it or pick another name"
+
+# What this run created, recorded so a failure removes only that.
+MADE_WT=""
+MADE_AGENT_DIR=""
+MADE_SESSION=""
+MADE_MONITOR=""
+
+# cleanup_created: remove what this run created, newest first. Never forces,
+# never touches a path this run did not record.
+cleanup_created() {
+  if [ -n "${MADE_MONITOR}" ]; then
+    "${THRUM}" monitor delete "${NAME}-pane-watch" >/dev/null 2>&1 ||
+      printf 'start-watcher: could not delete monitor %s-pane-watch; it is still registered\n' "${NAME}" >&2
+  fi
+  if [ -n "${MADE_SESSION}" ]; then
+    "${THRUM}" tmux kill "${NAME}" >/dev/null 2>&1 ||
+      printf 'start-watcher: could not kill tmux session %s; it is still there\n' "${NAME}" >&2
+    "${THRUM}" agent delete "${NAME}" >/dev/null 2>&1 ||
+      printf 'start-watcher: could not delete agent %s; it is still registered\n' "${NAME}" >&2
+  fi
+  if [ -n "${MADE_AGENT_DIR}" ]; then
+    rm -r -- "${MADE_AGENT_DIR:?}" ||
+      printf 'start-watcher: could not remove %s; it is still there\n' "${MADE_AGENT_DIR}" >&2
+  fi
+  if [ -n "${MADE_WT}" ]; then
+    # worktree teardown is the inverse of worktree create: it refuses a live
+    # agent's home, never forces, and salvages file content before removal.
+    "${THRUM}" worktree teardown "${MADE_WT}" >/dev/null 2>&1 ||
+      printf 'start-watcher: could not remove worktree %s; it is still there\n' "${MADE_WT}" >&2
+  fi
+}
+
+# fail <message>: clean up what this run created, then exit 1.
+fail() {
+  printf 'start-watcher: %s\n' "$1" >&2
+  cleanup_created
+  exit 1
+}
 
 WT_JSON="$("${THRUM}" worktree create "${NAME}" --json)" || die "worktree create failed; nothing else was started" 1
 WT_PATH="$(printf '%s' "${WT_JSON}" | jq -r '.worktree_path // empty')"
 [ -n "${WT_PATH}" ] || die "worktree create printed no worktree_path; nothing else was started" 1
+MADE_WT="${WT_PATH}"
 
 EXPECTED="$(jq --arg n "${NAME}" --arg p "${PARENT}" --arg m "${MODEL}" --argjson r "${ROSTER_JSON}" \
   --arg ca "${CAD_ACTIVE}" --arg ci "${CAD_IDLE}" --argjson pct "${RESTART_PCT}" \
   '.watcher = $n | .parent = $p | .model = $m | .roster = $r | .cadence_active = $ca | .cadence_idle = $ci | .restart_ctx_pct = $pct' "${TEMPLATE}")" ||
-  die "could not fill the params template; worktree ${WT_PATH} exists" 1
-mkdir -p "${AGENT_DIR}" || die "could not create ${AGENT_DIR}; worktree ${WT_PATH} exists" 1
+  fail "could not fill the params template"
+mkdir -p "${AGENT_DIR}" || fail "could not create ${AGENT_DIR}"
+MADE_AGENT_DIR="${AGENT_DIR}"
 if ! { printf '%s\n' "${EXPECTED}" >"${PARAMS}.tmp" && mv "${PARAMS}.tmp" "${PARAMS}"; }; then
-  die "could not write ${PARAMS}; worktree ${WT_PATH} exists" 1
+  fail "could not write ${PARAMS}"
 fi
-[ "$(jq -S . "${PARAMS}")" = "$(printf '%s' "${EXPECTED}" | jq -S .)" ] || die "${PARAMS} did not re-read equal; worktree ${WT_PATH} exists" 1
+[ "$(jq -S . "${PARAMS}")" = "$(printf '%s' "${EXPECTED}" | jq -S .)" ] || fail "${PARAMS} did not re-read equal"
 
 RT_ARGS=()
 [ -z "${RUNTIME}" ] || RT_ARGS=(--runtime "${RUNTIME}")
-"${THRUM}" tmux create "${NAME}" --name "${NAME}" --role "${ROLE}" --cwd "${WT_PATH}" --model "${MODEL}" --effort "${EFFORT}" ${RT_ARGS[@]+"${RT_ARGS[@]}"} ||
-  die "tmux create failed; worktree ${WT_PATH} and ${PARAMS} exist" 1
+MADE_SESSION=1
+"${THRUM}" tmux create "${NAME}" --name "${NAME}" --role "${ROLE}" --module "${ROLE}" --cwd "${WT_PATH}" --model "${MODEL}" --effort "${EFFORT}" ${RT_ARGS[@]+"${RT_ARGS[@]}"} ||
+  fail "tmux create failed"
 "${THRUM}" tmux launch "${NAME}" --model "${MODEL}" --effort "${EFFORT}" ${RT_ARGS[@]+"${RT_ARGS[@]}"} ||
-  die "tmux launch failed; the session exists but the agent did not start" 1
+  fail "tmux launch failed; the agent did not start"
 
 for f in thrum-watch-pane-capture.sh thrum-capture-fallback.sh; do
   if ! { cp "${SCRIPT_DIR}/${f}" "${AGENT_DIR}/${f}" && chmod +x "${AGENT_DIR}/${f}"; }; then
-    die "could not copy ${f} into ${AGENT_DIR}" 1
+    fail "could not copy ${f} into ${AGENT_DIR}"
   fi
 done
 "${THRUM}" monitor start --name "${NAME}-pane-watch" --match "${MATCH_REGEX}" --to "@${NAME}" --notify-on-success \
   --schedule "${CRON}" -- "${AGENT_DIR}/thrum-watch-pane-capture.sh" ||
-  die "monitor start failed; the agent is running without its pane-watch monitor" 1
+  fail "monitor start failed"
+MADE_MONITOR=1
 
 if [ "${ROLE}" = "steward" ]; then
   while IFS= read -r m; do
@@ -218,7 +263,7 @@ fi
 
 # --- verify by effect ------------------------------------------------------
 "${THRUM}" monitor list --json 2>/dev/null | jq -e --arg n "${NAME}-pane-watch" 'any(.[]?; .name == $n)' >/dev/null ||
-  die "monitor ${NAME}-pane-watch is not listed after start" 1
+  fail "monitor ${NAME}-pane-watch is not listed after start"
 
 printf 'started %s (%s)\n' "${NAME}" "${ROLE}"
 printf '  roster:  %s\n' "$(printf '%s' "${ROSTER_NAMES}" | tr '\n' ' ')"
