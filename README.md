@@ -55,7 +55,7 @@ verification steps, lives in
 Claude Code can add this repo as a plugin marketplace directly by URL:
 
 ```bash
-claude plugin marketplace add leonletto/thrum-pro
+claude plugin marketplace add thrum-team/thrum-pro
 claude plugin install thrum@thrum
 ```
 
@@ -73,7 +73,7 @@ version, or restart Claude Code.
 ### Codex — install straight from GitHub
 
 ```bash
-codex plugin marketplace add leonletto/thrum-pro
+codex plugin marketplace add thrum-team/thrum-pro
 codex plugin add thrum@thrum-marketplace
 ```
 
@@ -108,14 +108,14 @@ or pass `--model gpt-5.6-luna` to `thrum tmux create` and `thrum tmux launch`.
 From a shell:
 
 ```bash
-copilot plugin marketplace add leonletto/thrum-pro
+copilot plugin marketplace add thrum-team/thrum-pro
 copilot plugin install thrum@thrum
 ```
 
 Copilot also exposes these actions inside its CLI:
 
 ```text
-/plugin marketplace add leonletto/thrum-pro
+/plugin marketplace add thrum-team/thrum-pro
 /plugin install thrum@thrum
 /plugin update thrum
 /plugin list
@@ -143,7 +143,7 @@ directory in this repository is its source.
 ```bash
 curl https://cursor.com/install -fsS | bash
 agent login
-agent plugin marketplace add --git-ref main https://github.com/leonletto/thrum-pro.git
+agent plugin marketplace add --git-ref main https://github.com/thrum-team/thrum-pro.git
 agent
 ```
 
@@ -170,7 +170,7 @@ then start a new agent session:
 
 ```bash
 agent plugin marketplace remove thrum
-agent plugin marketplace add https://github.com/leonletto/thrum-pro
+agent plugin marketplace add https://github.com/thrum-team/thrum-pro
 ```
 
 See [INSTALL.md](INSTALL.md#cursor) for how to check the fetched version.
@@ -269,7 +269,7 @@ that runs your agents.
    `--trust-workspace`.
 
    ```bash
-   muse plugins marketplace add leonletto leonletto/thrum-pro
+   muse plugins marketplace add leonletto thrum-team/thrum-pro
    muse plugins install thrum@leonletto
    ```
 
@@ -319,7 +319,7 @@ Antigravity (`agy`) installs the Claude Code plugin and converts it. Install it
 from the `claude-plugin` folder of this repository:
 
 ```bash
-agy plugin install https://github.com/leonletto/thrum-pro/tree/main/claude-plugin
+agy plugin install https://github.com/thrum-team/thrum-pro/tree/main/claude-plugin
 agy plugin list
 ```
 
