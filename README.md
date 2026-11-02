@@ -12,9 +12,9 @@ This repository is where the **Thrum Pro plugin** lives, so anyone with access c
 install it straight from git. The plugin is the client side: skills, commands, agents,
 and hooks that run inside your assistant and drive the Thrum daemon.
 
-> **The Thrum binary is distributed separately.** This repo does **not** contain the
-> `thrum` binary itself — binary access is provisioned directly by the Thrum Pro team.
-> See [Getting the binary](#getting-the-thrum-binary) below.
+> **The plugin needs the `thrum` binary.** This repo holds the plugin; the binary comes
+> from this repo's GitHub Releases. Install it with one command — see
+> [Getting the Thrum binary](#getting-the-thrum-binary) below.
 
 ---
 
@@ -349,11 +349,33 @@ Tested with `agy` 1.4.x, most recently 1.4.6.
 
 ## Getting the Thrum binary
 
-The plugin drives the `thrum` daemon/CLI. That binary is a Thrum Pro product and is
-**not** distributed from this public repo — access is provisioned directly by the
-Thrum Pro team. Contact **leon@thrum.team** for access.
+The plugin drives the `thrum` daemon/CLI. Install the latest release on Linux or macOS
+(x86_64 or arm64) with:
 
-Once you have the binary installed and on your `PATH`, verify it:
+```bash
+curl -fsSL https://thrum.team/install.sh | bash
+```
+
+The installer downloads the release archive from this repo's GitHub Releases, checks it
+against the release's `checksums.txt`, and installs `thrum` into `~/.local/bin`. It
+installs nothing if the checksum is missing or doesn't match. It doesn't use `sudo` and
+doesn't edit your shell rc files; if `~/.local/bin` isn't on your `PATH`, it tells you
+what to add.
+
+The installer does **not** accept the licence for you. The terms are saved to
+`~/.local/share/thrum/LICENSE`, and your first `thrum` command asks you to accept them.
+
+Options:
+
+- Pin a version: `curl -fsSL https://thrum.team/install.sh | VERSION=v0.11.0 bash`
+- Install elsewhere: `curl -fsSL https://thrum.team/install.sh | INSTALL_DIR=/path bash`
+- Uninstall: `curl -fsSL https://thrum.team/install.sh | bash -s -- --uninstall`
+  (your `~/.thrum` directory is left alone)
+
+The script is [`install.sh`](install.sh) in this repo if you'd like to read it first.
+After an upgrade, restart a running daemon with `thrum daemon restart`.
+
+Verify the install:
 
 ```bash
 thrum --version

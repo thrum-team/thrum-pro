@@ -11,7 +11,16 @@ opencode-plugin/
 ```
 
 Each plugin talks to the `thrum` CLI on your `PATH`. This bundle ships plugin
-text only — no `thrum` binary. Install `thrum` separately first.
+text only — no `thrum` binary. Install `thrum` first:
+
+```bash
+curl -fsSL https://thrum.team/install.sh | bash
+```
+
+This downloads the latest release, verifies it against the release checksums, and
+installs `thrum` into `~/.local/bin`, without `sudo`. It does not accept the licence
+for you: your first `thrum` command asks you to. See the README for version pinning
+and uninstall.
 
 Every command below is written relative to the directory this file lives in
 (the bundle root). Run them from there, or substitute the full path to the
