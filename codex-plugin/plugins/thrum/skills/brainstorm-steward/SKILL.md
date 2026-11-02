@@ -94,6 +94,15 @@ Two channels feed your queue, because either alone can silently drop a thread:
   entirely if the send failed, was mis-addressed, or the brainstormer simply
   froze before sending.
 
+  A roster member whose capture fails is unwatchable, never a quiet pane:
+  escalate it under the same cap (at most three per condition; key
+  `<agent>|unwatchable|capture failed`). The report entry says
+  `FLAGGED: CAPTURE FAILED`, and the tick line's `(N capture-failed)` figure is
+  above zero. When no member could be captured and none is declared, the tick is
+  `RESOLUTION-FAIL` with no counts: read the report. A member listed in
+  `expected_inactive_roster` or `sleeping_roster` in `watch_params.json` is
+  declared absent on purpose: do not escalate it.
+
   This backstop's actual capture loop runs as the same `thrum monitor`-
   scheduled script the base `persistent-watcher-archetype` skill ships —
   `resources/thrum-watch-pane-capture.sh` — pointed at your own roster of

@@ -285,6 +285,88 @@ assert_eq "capture_daemon_overrides absent from watch_params.json: entry 1 inert
 rm -r -- "$d4b_dir"
 trap - EXIT
 
+# Declared-inactive members: expected_inactive_roster / sleeping_roster are
+# read by load_roster; a member in neither list is not declared.
+d5_dir="$(mktemp -d)"
+trap 'rm -r -- "$d5_dir" 2>/dev/null || true' EXIT
+d5_params="$d5_dir/watch_params.json"
+python3 -c '
+import json, sys
+json.dump({"roster": ["agent_a", "agent_b", "agent_c"], "expected_inactive_roster": ["agent_a"], "sleeping_roster": [{"agent_id": "agent_b"}]}, open(sys.argv[1], "w"))
+' "$d5_params"
+load_roster "$d5_params"
+is_declared_inactive agent_a && d5_a=yes || d5_a=no
+is_declared_inactive agent_b && d5_b=yes || d5_b=no
+is_declared_inactive agent_c && d5_c=yes || d5_c=no
+assert_eq "declared roster: expected_inactive_roster member is declared" "yes" "$d5_a"
+assert_eq "declared roster: sleeping_roster object member is declared" "yes" "$d5_b"
+assert_eq "declared roster: undeclared member is not declared (control)" "no" "$d5_c"
+python3 -c '
+import json, sys
+json.dump({"roster": ["agent_a"]}, open(sys.argv[1], "w"))
+' "$d5_params"
+load_roster "$d5_params"
+is_declared_inactive agent_a && d5_none=yes || d5_none=no
+assert_eq "declared roster: absent lists declare nothing" "no" "$d5_none"
+python3 -c '
+import json, sys
+json.dump({"roster": ["agent_a", "null", "agent_b", "agent_c"], "expected_inactive_roster": [None, 7, {"agent": "agent_a"}, {"name": "agent_a"}, "agent_c"], "sleeping_roster": {"x": "agent_b"}}, open(sys.argv[1], "w"))
+' "$d5_params"
+load_roster "$d5_params"
+is_declared_inactive agent_a && d5_a2=yes || d5_a2=no
+is_declared_inactive null && d5_null=yes || d5_null=no
+is_declared_inactive agent_b && d5_b2=yes || d5_b2=no
+is_declared_inactive agent_c && d5_c2=yes || d5_c2=no
+assert_eq "declared roster: only names and {agent_id} count; {agent}/{name} declare nothing" "no" "$d5_a2"
+assert_eq "declared roster: a null entry excuses nothing" "no" "$d5_null"
+assert_eq "declared roster: a dict-valued list excuses nothing" "no" "$d5_b2"
+assert_eq "declared roster: a bad entry does not drop the good ones after it" "yes" "$d5_c2"
+rm -r -- "$d5_dir"
+trap - EXIT
+
+# run_capture_cycle with a roster member whose capture fails (agent not found):
+# an undeclared member lands in FAILED; a declared-inactive member lands nowhere.
+# Shims replace every call that would touch tmux, ssh, the daemon or the archive.
+(
+  d6_dir="$(mktemp -d)"
+  trap 'rm -r -- "$d6_dir" 2>/dev/null || true' EXIT
+  thrum() {
+    case "$1" in
+      tmux) echo "Error: tmux.capture: RPC error -32000: rpcrouter: local agent not found"; return 1 ;;
+      *) return 0 ;;
+    esac
+  }
+  ssh_capture_pane() { return 1; }
+  resolve_session() { echo "sess"; }
+  agent_is_local() { return 1; }
+  measure_geometry_json() { :; }
+  check_ghost_tip() { :; }
+  archive_source_file() { :; }
+  archive_agent_file() { :; }
+  outdir="$d6_dir"
+  ROSTER=(ghost); ROSTER_HOSTNAME=(""); ROSTER_TMUX_SESSION=(""); ROSTER_RUNTIME=(""); ROSTER_DAEMON_OVERRIDE=("")
+  USE_JEV=0
+  echo "fixture=${#ROSTER[@]}/${#ROSTER_HOSTNAME[@]}/${#ROSTER_TMUX_SESSION[@]}/${#ROSTER_RUNTIME[@]}/${#ROSTER_DAEMON_OVERRIDE[@]} jev=${USE_JEV}"
+
+  FAILED=(); DEGRADED=(); CAPTURED=(); DECLARED_INACTIVE=()
+  run_capture_cycle "${outdir}/undeclared.txt" cap1 ts1 >/dev/null 2>&1
+  echo "undeclared=${FAILED[*]-} declared=${DECLARED_INACTIVE[*]-} captured=${#CAPTURED[@]}"
+
+  FAILED=(); DEGRADED=(); CAPTURED=(); DECLARED_INACTIVE=(ghost)
+  run_capture_cycle "${outdir}/declared.txt" cap2 ts2 >/dev/null 2>&1
+  echo "declared_failed=${FAILED[*]-}"
+  echo "declared_degraded=${DEGRADED[*]-}"
+  echo "declared_list=${DECLARED_INACTIVE[*]-} captured=${#CAPTURED[@]}"
+  echo "declared_marker=$(grep -c 'DECLARED INACTIVE' "${outdir}/declared.txt")"
+) > "${TMPDIR:-/tmp}/rw-cycle.$$" 2>&1
+d6_out="$(cat "${TMPDIR:-/tmp}/rw-cycle.$$")"; rm -f -- "${TMPDIR:-/tmp}/rw-cycle.$$"
+assert_eq "run_capture_cycle: fixture arrays are aligned (one member, no JEV)" "fixture=1/1/1/1/1 jev=0" "$(printf '%s\n' "$d6_out" | grep '^fixture=')"
+assert_eq "run_capture_cycle: undeclared failing member is FAILED and captured nothing" "undeclared=ghost declared= captured=0" "$(printf '%s\n' "$d6_out" | grep '^undeclared=')"
+assert_eq "run_capture_cycle: declared-inactive failing member is not FAILED" "declared_failed=" "$(printf '%s\n' "$d6_out" | grep '^declared_failed=')"
+assert_eq "run_capture_cycle: declared-inactive failing member is not DEGRADED" "declared_degraded=" "$(printf '%s\n' "$d6_out" | grep '^declared_degraded=')"
+assert_eq "run_capture_cycle: declared-inactive member captured nothing" "declared_list=ghost captured=0" "$(printf '%s\n' "$d6_out" | grep '^declared_list=')"
+assert_eq "run_capture_cycle: declared-inactive member is noted in the capture file" "declared_marker=1" "$(printf '%s\n' "$d6_out" | grep '^declared_marker=')"
+
 # ---------------------------------------------------------------------------
 echo "----------------------------------------"
 echo "roster-watch: $pass passed, $fail failed"

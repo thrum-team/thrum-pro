@@ -181,6 +181,25 @@ if [ "${#ROSTER[@]}" -eq 0 ]; then
 fi
 log "roster: ${ROSTER[*]}"
 
+# Members the owner has declared absent on purpose: `expected_inactive_roster`
+# and `sleeping_roster` in watch_params.json (each entry an agent name or an
+# object with "agent_id"; any other entry, null included, declares nothing). A
+# failed capture of a declared member is expected and does not flag; every
+# other failed capture does.
+DECLARED_INACTIVE=()
+while IFS= read -r d_name; do
+  [ -n "${d_name}" ] || continue
+  DECLARED_INACTIVE+=("${d_name}")
+done < <(jq -r '[.expected_inactive_roster, .sleeping_roster][] | select(type == "array") | .[] | if type == "object" then (.agent_id // "") elif type == "string" then . else empty end' "${PARAMS_FILE}" 2>/dev/null)
+
+is_declared_inactive() {
+  local want="$1" d
+  for d in ${DECLARED_INACTIVE[@]+"${DECLARED_INACTIVE[@]}"}; do
+    [ "${d}" = "${want}" ] && return 0
+  done
+  return 1
+}
+
 # NOTE: this script does NOT define its own is_proxy_failure() -- the
 # local-vs-SSH decision happens ENTIRELY inside thrum-capture-fallback.sh
 # (see capture_agent below, which always routes through that wrapper), so
@@ -334,6 +353,7 @@ capture_agent() {
 }
 
 FLAGGED=0
+CAPTURE_FAILED=0
 {
   echo "# ${AGENT_NAME} pane-watch report"
   echo "# generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -347,25 +367,45 @@ for agent in "${ROSTER[@]}"; do
   CAP1="${WORKDIR}/${agent}.cap1"
   CAP2="${WORKDIR}/${agent}.cap2"
 
+  # Exit status first, stdout second: a non-zero exit is a failed capture
+  # even when stdout holds text (an error message is not a pane). A missing
+  # agent is never read as a quiet pane. An exit-0 capture with a blank pane
+  # is a healthy idle agent, not a failure, so only the exit status decides.
   CAP1_OK=0
-  if capture_agent "${agent}" "${CAP1}" "${ROSTER_IDX}"; then
-    CAP1_OK=1
-  else
-    log "agent=${agent} WARN capture failed (exit code), recording report entry anyway"
+  CAP1_RC=0
+  capture_agent "${agent}" "${CAP1}" "${ROSTER_IDX}" || CAP1_RC=$?
+  [ "${CAP1_RC}" -eq 0 ] && CAP1_OK=1
+  if [ "${CAP1_OK}" -eq 0 ]; then
+    log "agent=${agent} WARN capture failed (exit ${CAP1_RC})"
   fi
 
-  if [ ! -s "${CAP1}" ]; then
-    log "agent=${agent} WARN empty capture, skipping detect"
-    {
-      echo "===== @${agent} ====="
-      echo "status: CAPTURE FAILED (empty output -- check local + ssh-fallback paths; ssh-fallback target: ${RESOLVED_SSH_TARGET[$ROSTER_IDX]})"
-      echo
-    } >>"${REPORT_FILE}"
+  if [ "${CAP1_OK}" -eq 0 ]; then
+    CAP_FIRSTLINE="$(head -n 1 "${CAP1}" 2>/dev/null | tr -d '\n' | cut -c1-160)"
+    if is_declared_inactive "${agent}"; then
+      log "agent=${agent} capture failed (exit ${CAP1_RC}); declared inactive (expected_inactive_roster/sleeping_roster), not flagging"
+      {
+        echo "===== @${agent} ====="
+        echo "status: declared inactive (expected_inactive_roster/sleeping_roster); capture failed (exit ${CAP1_RC}), not flagged"
+        echo
+      } >>"${REPORT_FILE}"
+    else
+      FLAGGED=$((FLAGGED + 1))
+      CAPTURE_FAILED=$((CAPTURE_FAILED + 1))
+      log "agent=${agent} FLAGGED capture failed (exit ${CAP1_RC}): ${CAP_FIRSTLINE}"
+      {
+        echo "===== @${agent} ====="
+        echo "status: FLAGGED: CAPTURE FAILED (exit ${CAP1_RC}; check local + ssh-fallback paths; ssh-fallback target: ${RESOLVED_SSH_TARGET[$ROSTER_IDX]})"
+        echo "--- capture output (first 5 lines) ---"
+        head -n 5 "${CAP1}" 2>/dev/null
+        echo "--- end capture output ---"
+        echo
+      } >>"${REPORT_FILE}"
+    fi
     ROSTER_IDX=$((ROSTER_IDX + 1))
     continue
   fi
 
-  [ "${CAP1_OK}" -eq 0 ] || CAPTURED_OK=$((CAPTURED_OK + 1))
+  CAPTURED_OK=$((CAPTURED_OK + 1))
   STATUS="clean"
   MATCH_NAME=""
 
@@ -409,11 +449,13 @@ for agent in "${ROSTER[@]}"; do
   ROSTER_IDX=$((ROSTER_IDX + 1))
 done
 
-if [ "${RESOLVED_COUNT}" -eq 0 ] && [ "${CAPTURED_OK}" -eq 0 ]; then
+# A roster whose every member is declared inactive captured nothing on purpose:
+# that is not an outage, so the marker needs at least one undeclared failure.
+if [ "${RESOLVED_COUNT}" -eq 0 ] && [ "${CAPTURED_OK}" -eq 0 ] && [ "${CAPTURE_FAILED}" -gt 0 ]; then
   RESOLUTION_ALL_FAILED=1
 fi
 
-log "DONE flagged=${FLAGGED} resolved=${RESOLVED_COUNT}/${#ROSTER[@]} report=${REPORT_FILE}"
+log "DONE flagged=${FLAGGED} capture_failed=${CAPTURE_FAILED} resolved=${RESOLVED_COUNT}/${#ROSTER[@]} report=${REPORT_FILE}"
 
 # One matchable line for `thrum monitor --match` to catch and deliver.
 # Two shapes: the routine tick, and the outage marker from the
@@ -422,5 +464,5 @@ log "DONE flagged=${FLAGGED} resolved=${RESOLVED_COUNT}/${#ROSTER[@]} report=${R
 if [ "${RESOLUTION_ALL_FAILED}" -eq 1 ]; then
   echo "watch-tick: RESOLUTION-FAIL $(date -u +%Y-%m-%dT%H:%M:%SZ) -- ${#ROSTER[@]} agent(s), 0 ssh-fallback targets resolved, 0 local captures -- report: ${REPORT_FILE}"
 else
-  echo "watch-tick: cycle done $(date -u +%Y-%m-%dT%H:%M:%SZ) -- ${#ROSTER[@]} agent(s), ${FLAGGED} flagged, ${RESOLVED_COUNT} ssh-fallback-ready -- report: ${REPORT_FILE}"
+  echo "watch-tick: cycle done $(date -u +%Y-%m-%dT%H:%M:%SZ) -- ${#ROSTER[@]} agent(s), ${FLAGGED} flagged (${CAPTURE_FAILED} capture-failed), ${RESOLVED_COUNT} ssh-fallback-ready -- report: ${REPORT_FILE}"
 fi

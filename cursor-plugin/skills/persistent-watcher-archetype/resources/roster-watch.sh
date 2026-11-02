@@ -737,6 +737,27 @@ run_self_submit_enter() {
 # ---------------------------------------------------------------------------
 load_roster() {
   local params_file="$1"
+  DECLARED_INACTIVE=()
+  while IFS= read -r _d; do
+    [ -n "$_d" ] || continue
+    DECLARED_INACTIVE+=("$_d")
+  done < <(python3 -c '
+import json, sys
+data = json.load(open(sys.argv[1]))
+for key in ("expected_inactive_roster", "sleeping_roster"):
+    entries = data.get(key)
+    if not isinstance(entries, list):
+        continue
+    for entry in entries:
+        if isinstance(entry, str):
+            name = entry
+        elif isinstance(entry, dict) and isinstance(entry.get("agent_id"), str):
+            name = entry["agent_id"]
+        else:
+            continue
+        if name:
+            print(name)
+' "$params_file" 2>/dev/null)
   ROSTER=()
   ROSTER_HOSTNAME=()
   ROSTER_TMUX_SESSION=()
@@ -761,6 +782,17 @@ for entry in data.get("roster", []):
     agent = entry.get("agent_id") or entry.get("agent") or entry.get("name") or ""
     print(f"{agent}|{entry.get('"'"'hostname'"'"') or '"'"''"'"'}|{entry.get('"'"'tmux_session'"'"') or '"'"''"'"'}|{entry.get('"'"'runtime'"'"') or '"'"''"'"'}|{overrides.get(agent) or '"'"''"'"'}")
 ' "$params_file" 2>/dev/null)
+}
+
+# is_declared_inactive — the owner declared this member absent on purpose
+# (`expected_inactive_roster` / `sleeping_roster` in watch_params.json). Its
+# failed capture is expected and is not an incident; any other failed capture is.
+is_declared_inactive() {
+  local want="$1" d
+  for d in ${DECLARED_INACTIVE[@]+"${DECLARED_INACTIVE[@]}"}; do
+    [ "$d" = "$want" ] && return 0
+  done
+  return 1
 }
 
 # ---------------------------------------------------------------------------
@@ -865,7 +897,9 @@ run_capture_cycle() {
         fi
         # A successful SSH capture is a real pane capture, not a degraded
         # liveness proof. Only classify when both capture routes failed.
-        if [ "$cap_rc" -ne 0 ]; then
+        if [ "$cap_rc" -ne 0 ] && is_declared_inactive "$a"; then
+          echo "--- DECLARED INACTIVE: capture of $a failed (exit $cap_rc) and $a is in expected_inactive_roster/sleeping_roster — not an incident ---" >>"$raw_file"
+        elif [ "$cap_rc" -ne 0 ]; then
           if grep -qiE "local agent not found|lacks required capability|empty.*binding|proxy.*capability|capability.*denied|peer.*unreachable|circuit open|dial skipped" "$primary_capture_file"; then
             probe_agent "$a" "$(head -1 "$primary_capture_file" | tr -d '\n' | cut -c1-120)" >>"$raw_file"
           else

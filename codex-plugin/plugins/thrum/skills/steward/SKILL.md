@@ -49,7 +49,14 @@ Two channels, because either alone can drop a thread.
   `[pane-judged]`. This is your judgment as an agent reading a pane, not a
   keyword or regex match, and you never act on a pane by guessing: if you are
   unsure, capture again before you raise it. Do not audit a coordinator's own
-  queue.
+  queue. A roster member whose capture fails is unwatchable, never a quiet pane:
+  escalate it under the same cap (at most three per condition; key
+  `<agent>|unwatchable|capture failed`). The report entry says
+  `FLAGGED: CAPTURE FAILED`, and the tick line's `(N capture-failed)` figure is
+  above zero. When no member could be captured and none is declared, the tick is
+  `RESOLUTION-FAIL` with no counts: read the report. A member listed in
+  `expected_inactive_roster` or `sleeping_roster` in `watch_params.json` is
+  declared absent on purpose: do not escalate it.
 
 Deduplicate: one queue item per asking agent and topic. Count escalations of one
 condition with the same count store the modal rubric uses (at most three per

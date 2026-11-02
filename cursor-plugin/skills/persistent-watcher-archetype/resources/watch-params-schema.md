@@ -24,6 +24,8 @@ If the file itself is missing, or `roster` is missing or empty, the watcher is n
 | `override` | object or null | no | `{cadence, reason, expires}`: a temporary widening. MUST carry `expires`; on expiry the watcher reverts to base cadence by itself. |
 | `pin_override` | object or null | no | `{target, model, effort, who, when, why, expires}`: a deliberate model or effort pin set by a coordinator. Distinct from `override`; do not merge them. `expires` is mandatory. |
 | `rules` | array | no | `[{when, cadence}]`: a deterministic table for cadence widening. The only sanctioned self-adjustment. |
+| `expected_inactive_roster` | array | no | Roster members the owner expects to be absent (names, or objects with `agent_id`). A failed capture of one does not flag. Any member not listed here still flags when its capture fails. |
+| `sleeping_roster` | array | no | Roster members parked on purpose (names, or objects with `agent_id`). Treated like `expected_inactive_roster`. |
 | `secondary_duty` | string | no | A free-form extra duty written by a coordinator, done in addition to the primary duty. |
 
 ## `pin_override`

@@ -358,6 +358,13 @@ duty.
   `capture failed` so the key is stable). Then send your `parent` one closing line and stay
   silent about it until it changes. An unwatchable coordinator is escalated
   to the human, per Escalation.
+- **A failed capture is this condition, never a quiet pane.** The report
+  entry says `FLAGGED: CAPTURE FAILED`, and the tick line's
+  `(N capture-failed)` figure is above zero. When no member could be captured
+  and none is declared, the tick is `RESOLUTION-FAIL` with no counts: read the
+  report. A `ROSTER INCIDENT:` line is the same condition. A member listed in
+  `expected_inactive_roster` or `sleeping_roster` in `watch_params.json` is
+  declared absent on purpose: do not escalate it.
 - **You never remove it from your own roster on your own judgment.** Roster
   membership is coordinator-owned config in `watch_params.json`, which you read
   every cycle. The one exception: when your **parent, a coordinator or the
