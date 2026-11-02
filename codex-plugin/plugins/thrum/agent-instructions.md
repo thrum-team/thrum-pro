@@ -7,8 +7,9 @@
 ## Context
 
 Thrum is a Git-backed messaging system for AI agent coordination. The Thrum
-codex plugin provides three lifecycle hooks (SessionStart auto-prime, PreToolUse
-safety block, Stop unread-inbox check) plus a library of role-discipline skills.
+codex plugin provides 8 lifecycle hooks across 4 events (SessionStart auto-prime,
+PreToolUse safety blocks and tool-call log, PostToolUse, Stop unread-inbox check)
+plus a library of role-discipline skills.
 
 Codex 0.130.0's `codex plugin marketplace add` registers a marketplace's
 metadata but does NOT auto-populate the per-plugin cache at
@@ -73,9 +74,10 @@ contains the interactive steps only they can do:
 1. Restart codex in a fresh shell (their terminal codex, IDE codex, whatever
    they're running).
 2. On first launch codex shows:
-   `3 hooks need review before they can run. Open /hooks to review them.`
-3. The user runs `/hooks` in codex. For each of PreToolUse, SessionStart, Stop:
-   press Enter to view, `t` to trust, Escape to go back.
+   a "Hooks need review" modal (`8 hooks are new or changed`).
+3. The user chooses **Trust all and continue**, or runs `/hooks` in codex and, for
+   each of SessionStart, PreToolUse, PostToolUse, Stop, presses Enter to view, `t`
+   to trust, Escape to go back. They must repeat this after every plugin upgrade.
 4. Restart codex once more. The SessionStart hook then auto-loads the thrum
    prime briefing on every future session.
 
@@ -85,8 +87,10 @@ Send a short status:
 
 > Thrum codex plugin installed at
 > `~/.codex/plugins/cache/thrum-marketplace/thrum/<version>/`. Restart codex and
-> approve the 3 hooks via `/hooks` (one-time security gate). Detailed steps in
-> the script's output above.
+> approve the 8 hooks (choose "Trust all and continue", or `/hooks`; repeat after
+> every plugin upgrade). Before the first Codex session, run a normal command such
+> as `thrum whoami` in a terminal and type yes to accept the EULA, or the hooks
+> fail with "EULA not accepted". Detailed steps in the script's output above and in INSTALL.md.
 
 ## What to do if it fails
 

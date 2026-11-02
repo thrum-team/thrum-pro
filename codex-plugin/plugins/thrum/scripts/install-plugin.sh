@@ -11,12 +11,16 @@
 #
 # After this script runs cleanly, the user must:
 #   1. Restart codex (or launch a fresh session).
-#   2. On first launch codex shows: "3 hooks need review before they can run.
-#      Open /hooks to review them."
-#   3. Run `/hooks` in codex, press Enter on each event row (PreToolUse,
-#      SessionStart, Stop), press `t` to trust, then Escape back.
+#   2. On first launch codex shows a "Hooks need review" modal ("8 hooks are
+#      new or changed"; the plugin ships 8 hooks across 4 events).
+#   3. Choose "Trust all and continue", or run `/hooks` in codex, press Enter on
+#      each event row (SessionStart, PreToolUse, PostToolUse, Stop), press `t`
+#      to trust, then Escape back. Repeat this after every plugin upgrade.
 #   4. Restart codex one more time. The SessionStart hook will fire and
 #      auto-load the thrum prime briefing.
+#   Before the first codex session, accept the Thrum EULA once (run a normal
+#   command such as thrum whoami in a terminal and type yes); see INSTALL.md
+#   "Accept the EULA before the first Codex session".
 #
 # Environment overrides:
 #   THRUM_INSTALL_REF        Git ref to install (default: main)
@@ -343,12 +347,14 @@ ${install_banner}
 
 Next steps (interactive — only the user can do these):
   1. Restart your codex agent (run \`codex\` in a fresh shell, or restart your IDE).
-  2. Codex will show: "⚠ 3 hooks need review before they can run. Open /hooks to review them."
-  3. Run /hooks in codex:
-     - Press Enter on PreToolUse → 't' to trust → Escape
-     - Arrow down to SessionStart → Enter → 't' → Escape
-     - Arrow down to Stop → Enter → 't' → Escape, Escape
+  2. Codex will show a "Hooks need review" modal ("8 hooks are new or changed"; the plugin ships 8 hooks across 4 events).
+  3. Choose "Trust all and continue", or run /hooks in codex and approve every event:
+     - Arrow to each of SessionStart, PreToolUse, PostToolUse, Stop → Enter → 't' → Escape
+     Repeat this step after every plugin upgrade.
   4. Restart codex again. SessionStart hook will auto-load the thrum prime briefing.
+
+Before your first codex session, accept the Thrum EULA once: run a normal command such as thrum whoami
+in a terminal and type yes (see INSTALL.md, "Accept the EULA before the first Codex session").
 
 To upgrade later, re-run the one-shot installer (idempotent):
     bash <(curl -fsSL https://raw.githubusercontent.com/${REPO}/${REF}/codex-plugin/plugins/thrum/scripts/install-plugin.sh)

@@ -15,7 +15,8 @@
   plugin_hooks = true
   ```
 
-- `thrum` CLI on `PATH`
+- `thrum` CLI on `PATH`, with the Thrum EULA accepted (see "Accept the EULA before the
+  first Codex session")
 
 ## Recommended: install from the marketplace
 
@@ -26,8 +27,10 @@ codex plugin add thrum@thrum-marketplace
 
 Update with `codex plugin marketplace upgrade thrum-marketplace`, then repeat the
 `codex plugin add` command. Restart running Codex agents after an install or
-update. On this route the plugin's SessionStart hook applies the
-`thrum-workspace` sandbox permission profile, which takes effect after the next
+update, and re-approve the hooks after every plugin upgrade (see "First-run hook
+approval"): an upgrade that changes hook text invalidates the approval. On this
+route the plugin's SessionStart hook applies the `thrum-workspace` sandbox
+permission profile, which takes effect after the next
 Codex restart; the install script below applies it at install time instead (see
 "Sandbox permission profile").
 
@@ -218,14 +221,86 @@ To run it standalone:
 ./codex-plugin/plugins/thrum/scripts/ensure-permission-profile.sh
 ```
 
+## Accept the EULA before the first Codex session
+
+Thrum refuses to run until the EULA bundled with the binary is accepted, and a
+Codex hook has no terminal to ask in. Without an acceptance on record, every
+hook fails with `thrum: EULA not accepted`, and the `PreToolUse` guard denies
+the first tool call. Accept it once, before starting Codex:
+
+- in a terminal, run a normal command such as `thrum whoami`, read the prompt
+  and type `yes`; or
+- without a terminal, run a normal command with the variable set to the bundled
+  EULA version, for example `THRUM_ACCEPT_EULA=0.9.10 thrum whoami` (the version
+  is currently `0.9.10`; the prompt and the refusal message name the version
+  they want). Starting Codex with `THRUM_ACCEPT_EULA` set to that version also
+  records it, because the first hook runs `thrum` with it.
+
+The acceptance is recorded under `~/.thrum/license/` and later sessions need no
+variable. `thrum version`, `thrum help` and the shell-completion commands are
+exempt from the gate and record nothing, so running only those does not accept
+the EULA.
+
+The first Codex session after the plugin is activated shows
+`hook: SessionStart Stopped` once: the `ensure-permission-activation` hook has
+written the `thrum-workspace` permission profile into `~/.codex/config.toml`
+and stops that session so the next one picks it up. The second session is clean.
+
 ## First-run hook approval
 
-On the first codex session after install, codex will display:
+Codex runs a plugin hook only after you approve it. On the first interactive
+Codex session after install, and again after every plugin upgrade, Codex shows
+a startup modal:
 
-> ⚠ 3 hooks need review before they can run. Open /hooks to review them.
+```text
+Hooks need review
+8 hooks are new or changed.
+  1. Review hooks
+  2. Trust all and continue
+  3. Continue without trusting (hooks won't run)
+```
 
-Open `/hooks` and approve all three (SessionStart, PreToolUse, Stop). Codex
-remembers the approval for subsequent sessions.
+Choose **Trust all and continue**, or open `/hooks` and approve every event
+(SessionStart, PreToolUse, PostToolUse, Stop). The plugin ships 8 hooks across
+those 4 events. Codex records each approval as a `trusted_hash` under
+`[hooks.state]` in `~/.codex/config.toml` and remembers it for later sessions.
+Thrum never writes those entries; only Codex does.
+
+### After every plugin upgrade, re-approve the hooks
+
+An upgrade that changes the hook text leaves the stored hashes stale. Start
+`codex` interactively once and choose **Trust all and continue** (or `/hooks`
+and approve every event). Until you do:
+
+- `codex exec` on Codex 0.164 and newer prints `hook: <Event> Failed` for every
+  previously approved hook whose hash no longer matches (for example
+  `hook: SessionStart Failed`, `hook: Stop Failed`). Hooks that were never
+  approved are not run and print nothing.
+- Older Codex prints nothing and silently does not run the hooks.
+- The Codex session and its tool calls still work. What stops: inbox reminders
+  (Stop), session and context injection (SessionStart), hook logging, and the
+  two PreToolUse guards (`block-sync-worktree-cd`, `block-tls-key-exfil`).
+
+### Non-interactive automation: `--dangerously-bypass-hook-trust`
+
+`codex exec` has no approval modal. For automation that vets its own hook
+sources, pass the flag on that command line:
+
+```bash
+codex exec --dangerously-bypass-hook-trust --skip-git-repo-check "<prompt>"
+```
+
+Codex's own help text for the flag reads: "Run enabled hooks without requiring
+persisted hook trust for this invocation. DANGEROUS. Intended only for
+automation that already vets hook sources". It turns off hook review for ALL
+hooks Codex would load in that run, not only the Thrum plugin's, so use it only
+where every hook source is yours. The Thrum security model treats every process
+with write access to the repository as trusted and keeps local guards for agent
+mistakes, not attackers, so using it for your own vetted plugin is consistent with that model. It is a
+deliberate security-relevant choice, so state the reason where you use it. **Do not put the bypass flag in
+your Codex configuration file or a shell alias for interactive use**; approve
+the hooks instead. Thrum's own TUI launch presets pass it, which is why a
+Thrum-launched Codex pane does not show these failures.
 
 ## SessionStart auto-prime
 
