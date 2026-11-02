@@ -17,7 +17,23 @@
 
 - `thrum` CLI on `PATH`
 
-## Recommended: one-command install
+## Recommended: install from the marketplace
+
+```bash
+codex plugin marketplace add thrum-team/thrum-pro
+codex plugin add thrum@thrum-marketplace
+```
+
+Update with `codex plugin marketplace upgrade thrum-marketplace`, then repeat the
+`codex plugin add` command. Restart running Codex agents after an install or
+update. On this route the plugin's SessionStart hook applies the
+`thrum-workspace` sandbox permission profile, which takes effect after the next
+Codex restart; the install script below applies it at install time instead (see
+"Sandbox permission profile").
+
+After the install, follow the "First-run hook approval" steps below.
+
+## Alternative: one-command install script
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/thrum-team/thrum-pro/main/codex-plugin/plugins/thrum/scripts/install-plugin.sh)
@@ -63,7 +79,7 @@ restart codex and approve hooks.
 > marketplace-plugin manifest schema, so nothing in Codex's own native
 > install path can auto-run `ensure-permission-profile.sh` for you. The ONLY
 > supported routine that yields a fully-permissioned install is
-> **`install-plugin.sh`** (the "Recommended: one-command install" section
+> **`install-plugin.sh`** (the "Alternative: one-command install script" section
 > above) — it runs exactly the same marketplace steps below PLUS the required
 > permission-profile step at the end, and fails loudly if that step fails.
 > If you follow the raw steps below instead, you MUST run

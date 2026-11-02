@@ -29,7 +29,19 @@ codex --version 2>&1 | head -1
 Codex must be `0.130.0` or newer. If any prereq fails, stop and tell the user —
 don't try to install codex or jq yourself.
 
-## Run the installer (one command)
+## Install from the marketplace
+
+```bash
+codex plugin marketplace add thrum-team/thrum-pro
+codex plugin add thrum@thrum-marketplace
+```
+
+Update with `codex plugin marketplace upgrade thrum-marketplace`, then repeat the
+`codex plugin add` command. On this route the plugin's SessionStart hook applies
+the `thrum-workspace` sandbox permission profile, which takes effect after the
+next Codex restart; the installer below applies it at install time instead.
+
+## Alternative: run the installer (one command)
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/thrum-team/thrum-pro/main/codex-plugin/plugins/thrum/scripts/install-plugin.sh)

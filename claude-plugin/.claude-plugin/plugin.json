@@ -1,10 +1,10 @@
 {
   "name": "thrum",
   "description": "Git-backed messaging for AI agent coordination across sessions, worktrees, and machines.",
-  "version": "0.11.0-dev.1.390",
+  "version": "0.11.0-dev.1.393",
   "author": {
-    "name": "Leon Letto",
-    "url": "https://github.com/leonletto"
+    "name": "THRUM LLC",
+    "url": "https://github.com/thrum-team"
   },
   "repository": "https://github.com/thrum-team/thrum-pro",
   "license": "Apache-2.0",
