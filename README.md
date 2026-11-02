@@ -80,6 +80,13 @@ codex plugin add thrum@thrum-marketplace
 Update with `codex plugin marketplace upgrade thrum-marketplace`, then repeat
 the `codex plugin add` command.
 
+After installing or updating the plugin, run `codex` once in your project and
+choose **Trust all and continue** at the "Hooks need review" prompt; there is no
+command-line way to approve hooks, and a plugin update that changes a hook asks
+again. Thrum-launched agents skip this prompt. Accept the Thrum EULA first
+(`thrum whoami` in a terminal, then type `yes`), or the hooks fail. See
+[the Codex plugin's INSTALL.md](codex-plugin/plugins/thrum/INSTALL.md).
+
 Restart running Codex agents after a plugin update; a running session does not
 load the new version, and `/skills reload` does not refresh plugin skills.
 Codex refreshes a Git-sourced marketplace and rebuilds its plugin cache at
