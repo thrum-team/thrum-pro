@@ -20,7 +20,7 @@ extracted bundle.
 ## Claude Code
 
 ```bash
-claude plugin marketplace add leonletto/thrum-pro
+claude plugin marketplace add thrum-team/thrum-pro
 claude plugin install thrum@thrum
 claude plugin marketplace update thrum
 claude plugin update thrum@thrum
@@ -30,7 +30,7 @@ After updating, run `/reload-plugins` in each running Claude Code session to
 load the new version, or restart Claude Code.
 
 Offline / local-path alternative (no GitHub access needed — points at this
-extracted bundle instead of cloning `leonletto/thrum-pro`):
+extracted bundle instead of cloning `thrum-team/thrum-pro`):
 
 ```bash
 claude plugin marketplace add ./claude-plugin
@@ -52,11 +52,11 @@ avoid it while Claude Code sessions are running.
 To switch an existing local-path install to this GitHub repository without
 uninstalling it, point the marketplace at GitHub, then update. If
 `~/.claude/settings.json` has an `extraKnownMarketplaces.thrum` entry, first
-change its value to `{"source":{"source":"github","repo":"leonletto/thrum-pro"}}`;
+change its value to `{"source":{"source":"github","repo":"thrum-team/thrum-pro"}}`;
 otherwise `marketplace add` refuses the new source.
 
 ```bash
-claude plugin marketplace add leonletto/thrum-pro
+claude plugin marketplace add thrum-team/thrum-pro
 claude plugin update thrum@thrum
 ```
 
@@ -65,7 +65,7 @@ Verify with `claude plugin list`; `thrum@thrum` must be installed and enabled.
 ## Codex
 
 ```bash
-codex plugin marketplace add leonletto/thrum-pro
+codex plugin marketplace add thrum-team/thrum-pro
 codex plugin add thrum@thrum-marketplace
 ```
 
@@ -117,7 +117,7 @@ skill twice in its skill picker.
 ## GitHub Copilot CLI
 
 ```bash
-copilot plugin marketplace add leonletto/thrum-pro
+copilot plugin marketplace add thrum-team/thrum-pro
 copilot plugin install thrum@thrum
 ```
 
@@ -145,7 +145,7 @@ Inside a Copilot CLI session, the same plugin-management actions are also
 available through:
 
 ```text
-/plugin marketplace add leonletto/thrum-pro
+/plugin marketplace add thrum-team/thrum-pro
 /plugin install thrum@thrum
 /plugin update thrum
 /plugin list
@@ -162,7 +162,7 @@ workspace, and from a non-interactive shell it fails with "workspace trust ...
 undecided and no interactive terminal".
 
 ```bash
-muse plugins marketplace add leonletto leonletto/thrum-pro
+muse plugins marketplace add leonletto thrum-team/thrum-pro
 muse plugins install thrum@leonletto
 ```
 
@@ -208,7 +208,7 @@ marketplace:
 ```bash
 curl https://cursor.com/install -fsS | bash
 agent login
-agent plugin marketplace add --git-ref main https://github.com/leonletto/thrum-pro.git
+agent plugin marketplace add --git-ref main https://github.com/thrum-team/thrum-pro.git
 agent
 ```
 
@@ -235,7 +235,7 @@ it reports success:
 
 ```bash
 agent plugin marketplace remove thrum
-agent plugin marketplace add https://github.com/leonletto/thrum-pro
+agent plugin marketplace add https://github.com/thrum-team/thrum-pro
 ```
 
 Re-adding the marketplace does not reinstall the plugin. Confirm the fetched
@@ -246,7 +246,7 @@ plugins; project `.cursor/commands` and `.cursor/skills` are also read only at
 session start:
 
 ```bash
-MP=$(find ~/.cursor/plugins/marketplaces/github.com/leonletto/thrum-pro -mindepth 1 -maxdepth 1 -type d | head -1)
+MP=$(find ~/.cursor/plugins/marketplaces/github.com/thrum-team/thrum-pro -mindepth 1 -maxdepth 1 -type d | head -1)
 python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['version'])" "$MP/cursor-plugin/.cursor-plugin/plugin.json"
 ```
 
@@ -283,7 +283,7 @@ Antigravity (`agy`) installs the Claude Code plugin and converts it. Install it
 from the `claude-plugin` folder of this repository:
 
 ```bash
-agy plugin install https://github.com/leonletto/thrum-pro/tree/main/claude-plugin
+agy plugin install https://github.com/thrum-team/thrum-pro/tree/main/claude-plugin
 agy plugin list
 ```
 
