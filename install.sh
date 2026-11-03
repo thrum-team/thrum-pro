@@ -4,13 +4,13 @@
 # Install the latest release:
 #   curl -fsSL <installer-url> | bash
 # Pin a version (the env var must be on the bash side of the pipe):
-#   curl -fsSL <installer-url> | VERSION=v0.11.0 bash
+#   curl -fsSL <installer-url> | VERSION=v1.0.0 bash
 # Uninstall:
 #   curl -fsSL <installer-url> | bash -s -- --uninstall
 #
 # Environment variables:
-#   VERSION                  release to install: latest (default), v0.11.0,
-#                            0.11.0 or v0.11.0-rc.7. "latest" skips
+#   VERSION                  release to install: latest (default), v1.0.0,
+#                            1.0.0 or v1.0.0-rc.1. "latest" skips
 #                            prereleases; pin a prerelease explicitly.
 #   INSTALL_DIR              install directory (default: $HOME/.local/bin)
 #   THRUM_REPO               GitHub repo that holds the releases
@@ -46,7 +46,7 @@ usage() {
 thrum installer
 
 Usage: curl -fsSL <installer-url> | bash
-       curl -fsSL <installer-url> | VERSION=v0.11.0 bash
+       curl -fsSL <installer-url> | VERSION=v1.0.0 bash
        curl -fsSL <installer-url> | bash -s -- --uninstall
 
 Options:
@@ -54,7 +54,7 @@ Options:
   --help, -h    show this text
 
 Environment:
-  VERSION       latest (default), v0.11.0, 0.11.0, v0.11.0-rc.7
+  VERSION       latest (default), v1.0.0, 1.0.0, v1.0.0-rc.1
   INSTALL_DIR   install directory (default: $HOME/.local/bin)
 USAGE
 }
