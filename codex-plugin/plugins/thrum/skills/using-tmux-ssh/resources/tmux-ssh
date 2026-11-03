@@ -633,13 +633,15 @@ establish() {
   # dropped ssh leaves a DEAD pane (remain-on-exit) that executes nothing; its last screen stays readable.
   ssh_argv
   if ! has_session; then
-    tmux -L "$SOCKET" new-session -d -s "$SESSION" -x 220 -y 50 "${SSH_ARGV[@]}" \; \
+    local tmux_err
+    tmux_err=$(tmux -L "$SOCKET" new-session -d -s "$SESSION" -x 220 -y 50 "${SSH_ARGV[@]}" \; \
       set-option -t "$PTGT" remain-on-exit on \; \
-      set-option -t "$PTGT" @tmux_ssh_dir "$OWNER_DIR" >/dev/null 2>&1 || die "tmux new-session failed" 1
+      set-option -t "$PTGT" @tmux_ssh_dir "$OWNER_DIR" 2>&1 >/dev/null) || die "tmux new-session failed: ${tmux_err:-no message from tmux}" 1
   elif ! pane_is_ssh; then
     # dead ssh pane, or a legacy session whose pane is a local shell: replace the pane's process outright (-k)
+    local tmux_err
     tmux -L "$SOCKET" set-option -t "$PTGT" remain-on-exit on >/dev/null 2>&1
-    tmux -L "$SOCKET" respawn-pane -k -t "$PTGT" "${SSH_ARGV[@]}" >/dev/null 2>&1 || die "tmux respawn-pane failed" 1
+    tmux_err=$(tmux -L "$SOCKET" respawn-pane -k -t "$PTGT" "${SSH_ARGV[@]}" 2>&1 >/dev/null) || die "tmux respawn-pane failed: ${tmux_err:-no message from tmux}" 1
   fi
   has_session || die "ssh to $HOST exited immediately (auth/host-key issue? see: ssh $HOST)" 125
   # Wait for the ssh client to become the pane's foreground process.
