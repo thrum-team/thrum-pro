@@ -305,12 +305,8 @@ The §3 lens gates (hotpath + philosophy) are the judgement half. The per-merge
 executed half is **scoped to the change**:
 
 - Build the merged tree with the `build_merged_tree` command in `.thrum/gate-config.json`.
-- 🔴 **RULING:** the full sharded race suite —
-  the project's sharded race test runner over all packages (~15-20 min) — on the **merged tree**, every
-  merge-gate verdict. This replaces the prior "changed packages only (+ rpc shard
-  sweep)" race scoping below the ruling; a targeted `-run` is still never
-  acceptable (a targeted run misses cross-test races). Never on primary (the
-  shared fleet build box) — it is CPU-heavy; run it on the gate box.
+- Test and race scope: follow "What the per-landing gate runs" above. Never run
+  it on primary (the shared fleet build box); run it on the gate box.
 - The fast structural checks on the merged tree: every `structural_checks` entry in `.thrum/gate-config.json`
   (seconds each; they catch drift that does not depend on what the change touched).
 - The `merge-base --is-ancestor` fast-forward check (§6).

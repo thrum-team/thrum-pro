@@ -71,8 +71,10 @@ the one resource it cannot replace and leaves no durable verdict artifact.
 explicitly in the merge record so the gap is visible rather than invisible.
 
 **Verdicts are one log line:** the runner appends ONE line (date, gate,
-candidate SHA, target SHA, verdict, one short reason) to `dev-docs/gate-log.md`
-and commits it. That line is the only record a gate keeps; the verdict itself
+candidate SHA, target SHA, verdict, one short reason) to the verdict log and
+commits it. The log path is `verdict_log` in `.thrum/gate-config.json` (resolved
+through `.thrum/redirect` from a worktree), default `docs/gate-log.md` when the
+key is absent. That line is the only record a gate keeps; the verdict itself
 travels in the report message. Never commit per-gate report directories, logs,
 archives or evidence (owner ruling 2026-10-17: once a gate has decided and the
 candidate is landed or rejected, its output is deleted).

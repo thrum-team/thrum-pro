@@ -1,6 +1,6 @@
 # Reliability Class Library
 
-Shared reference loaded by `project-philosophy` (all 7 classes) and
+Shared reference loaded by `project-philosophy` (every class) and
 `project-hotpath-gate` (classes tagged `hotpath` below, via their hot-path
 facet). Distilled from thrum's own anti-patterns and SQLite crash-recovery lessons.
 Each class is a generalizable

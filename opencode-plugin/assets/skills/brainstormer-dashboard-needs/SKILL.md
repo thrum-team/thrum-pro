@@ -50,11 +50,11 @@ failure.
 
 ## Honesty (same table as the commons)
 
-While E4 (answer round-trip) is NOT landed, board picks cannot be answered in
-the UI — your NEED still routes via the steward/message channel exactly as
-`brainstorm-queue-aware` prescribes. The board-shaped authoring above is the
-format to keep using so the transition is seamless when E4 lands. Until then,
-a board is rehearsal surface only: never assume the human saw a widget.
+Board picks are answerable in the UI: the human's click arrives as a message
+carrying `question_id` + pick + optional text, and `thrum dashboard results`
+lists them. Your NEED also routes via the steward/message channel exactly as
+`brainstorm-queue-aware` prescribes. Never assume the human saw a widget until
+an answer arrives.
 
 ## Refs to other skills
 

@@ -179,13 +179,13 @@ prompts.
 
 #### Step 4a: Probe for generalizable reliability classes
 
-Read `resources/reliability-class-library.md`. For each of its 7 classes, run
-the per-language probe matching the language detected in Step 1 (fall back to
-the class's generic probe if the detected language has no dedicated entry).
-Record every hit as an adapted finding: the class name, the specific file/line
-found, and a BAD/GOOD pair phrased in the target repo's own language and idioms
-— never reuse the library's own example snippets verbatim, they are
-illustrations of the SHAPE to look for, not text to paste.
+Read `resources/reliability-class-library.md`. For every class in it, run the
+per-language probe matching the language detected in Step 1 (fall back to the
+class's generic probe if the detected language has no dedicated entry). Record
+every hit as an adapted finding: the class name, the specific file/line found,
+and a BAD/GOOD pair phrased in the target repo's own language and idioms — never
+reuse the library's own example snippets verbatim, they are illustrations of the
+SHAPE to look for, not text to paste.
 
 A class with zero hits is not an error — record it as walked-and-not-found and
 move on. This step runs before the interactive prompts (Step 5) so seeded

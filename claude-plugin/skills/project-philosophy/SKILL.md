@@ -173,7 +173,7 @@ prompts.
 
 ### Step 4a: Probe for generalizable reliability classes
 
-Read `resources/reliability-class-library.md`. For each of its 7 classes, run
+Read `resources/reliability-class-library.md`. For every class in it, run
 the per-language probe matching the language detected in Step 1 (fall back to
 the class's generic probe if the detected language has no dedicated entry).
 Record every hit as an adapted finding: the class name, the specific file/line

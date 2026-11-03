@@ -1,10 +1,9 @@
 # Implementation Philosophy
 
 > **For all agents:** This document governs how features are built. Read this
-> BEFORE any plan file or task descriptions. When in doubt, ask: "[your > >
-> project's > guiding question — e.g., 'Am I wiring a real service, or faking >
->
-> > it?']"
+> BEFORE any plan file or task descriptions. When in doubt, ask: "[your >
+> project's guiding question — e.g., 'Am I wiring a real service, or faking >
+> it?']"
 >
 > **Fill this template** for your project. The pre-filled examples below are
 > universal defaults — adapt, replace, or extend them for your domain.

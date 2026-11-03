@@ -19,10 +19,10 @@ is a PROMISE with four parts:
 1. **Visible** — it stays on the board (status PENDING) until answered or
    explicitly withdrawn by YOU (update its text to withdrawn, don't just
    delete it).
-2. **Answerable** — while E4 is NOT landed, an action-pick cannot actually be
-   answered in the UI. Until then, pair every board question with its
-   answering channel (the NEED still routes via message/steward as today) and
-   say so on the board — never let the human hit a dead control.
+2. **Answerable** — an action-pick is answered in the UI, and the answer
+   arrives as a message. Pair every board question with its answering channel
+   (the NEED also routes via message/steward) so the human never hits a dead
+   control.
 3. **Tracked** — check `thrum dashboard results` after every relevant nudge;
    an answer arrives as a message carrying `question_id` + pick + optional
    text. Unread answers + a PENDING widget = you broke the loop.
@@ -60,12 +60,11 @@ consoles: relay to the originating brainstormer, in the owner's words — the
 pick plus their typed nuance). Relay the TEXT the human wrote; paraphrasing
 away their nuance defeats the optional-text feature.
 
-## Ship gate
+## Availability
 
-The USE-mandate blocks of this skill activate when E3 (web UI tab) + E2 (CLI)
-land. Before that, the board renders nowhere — publishing is a daemon-side
-rehearsal only, and the mandate sections are inert by the honesty table in
-`using-the-dashboard`.
+The board renders in the web UI Dashboard tab and the `thrum dashboard` CLI is
+available; the mandate sections of this skill apply. The surface and CLI
+contract are in `using-the-dashboard`.
 
 ## Refs to other skills
 
