@@ -187,7 +187,9 @@ Two prereqs must be satisfied before project-setup proceeds.
 
 #### Issue tracker
 
-Choose the tracker before anything else:
+Choose the tracker before anything else. If your briefing has an "Issue tracker:
+thrum issue" section, use `thrum issue` as under "Without beads" and skip the
+probe. Otherwise:
 
 ```bash
 bd version; test -d .beads && echo beads-dir; true
