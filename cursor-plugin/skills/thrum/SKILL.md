@@ -33,6 +33,13 @@ thrum wait                               Block until message arrives (30s timeou
 thrum wait --timeout 120s                Custom timeout (duration)
 ```
 
+**No reply to a pure acknowledgement.** Do not reply to a message that only
+thanks, acknowledges, confirms receipt or signs off ("thanks", "ok", "got it",
+"acknowledged", an emoji): mark it read with `thrum message read <id>`. Reply
+only when it asks a question, gives a task, reports a result you must act on, or
+you have new information. A dispatch the sender is waiting on still gets its
+status reply.
+
 One-to-many fan-out (`--broadcast`, `@everyone`, role-based mentions/groups)
 was removed by design (P0 ruling); do not restore it. Name
 every recipient explicitly with repeatable `--to @name`, or address a scoped

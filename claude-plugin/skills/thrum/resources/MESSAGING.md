@@ -25,7 +25,12 @@
    scoped to your inbox). `thrum message reindex` rebuilds the FTS index if
    search looks wrong.
 7. **Reply** — `thrum reply <msg-id> --body-file reply.md` (see Addressing for
-   the no-`--to` rule)
+   the no-`--to` rule). Do not reply to a message that only thanks,
+   acknowledges, confirms receipt or signs off ("thanks", "ok", "got it",
+   "acknowledged", an emoji): mark it read with `thrum message read <id>`.
+   Reply only when it asks a question, gives a task, reports a result you
+   must act on, or you have new information. A dispatch the sender is waiting
+   on still gets its status reply.
 
 ## Addressing
 

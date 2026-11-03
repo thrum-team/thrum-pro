@@ -123,3 +123,11 @@ from the role, e.g., `--name lead-agent --role coordinator`.
 concluding there's nothing important waiting. **Right:** See MESSAGING.md
 "Message Lifecycle" step 6 (Search — do not page through the inbox) for why and
 how.
+
+## 16. Replying to a Pure Acknowledgement
+
+**Wrong:** answering "thanks", "ok", "got it", "acknowledged" or an emoji with
+another acknowledgement. **Right:** mark it read (`thrum message read <id>`).
+Reply only when the message asks a question, gives a task, reports a result you
+must act on, or you have new information. A dispatch the sender is waiting on
+still gets its status reply.

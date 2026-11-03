@@ -23,6 +23,7 @@ description: "Use when forwarding or relaying information between parties, routi
 - Continue referencing the original message rather than an intermediary's summary.
 - Identify corrections by the exact message they supersede.
 - Distinguish delivery, acknowledgement, execution, and verification.
+- Do not reply to a message that only acknowledges or thanks; mark it read.
 - Preserve the original thread audience when replying unless a deliberately narrower audience is required.
 
 ## Routing Envelope
