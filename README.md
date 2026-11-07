@@ -374,7 +374,7 @@ The installer does **not** accept the licence for you. The terms are saved to
 
 Options:
 
-- Pin a version: `curl -fsSL https://thrum.team/install.sh | VERSION=v1.0.0 bash`
+- Pin a version: `curl -fsSL https://thrum.team/install.sh | VERSION=v1.1.0 bash`
 - Install elsewhere: `curl -fsSL https://thrum.team/install.sh | INSTALL_DIR=/path bash`
 - Uninstall: `curl -fsSL https://thrum.team/install.sh | bash -s -- --uninstall`
   (your `~/.thrum` directory is left alone)
