@@ -9,7 +9,7 @@ license: "Apache-2.0"
 
 Run `thrum prime` for full session context (auto-injected by the SessionStart
 hook; also fires on post-compact resume). PreCompact is not registered — use
-`/thrum:compact` to save a snapshot before deliberately compacting.
+`/thrum-compact` to save a snapshot before deliberately compacting.
 
 If the prime output was truncated, run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime`
 once and read its output fully)
@@ -25,7 +25,7 @@ thrum send --to @name1 --to @name2 --body-file msg.md   # Multiple explicit reci
 thrum reply <msg-id> --body-file reply.md          # Reply (same audience; NO --to — recipient comes from the message)
 thrum inbox                              List messages (never marks them read)
 thrum inbox --unread                     Unread only (never marks them read)
-thrum message search "<term>"            Full-text search — use instead of paging; stale unread sorts last
+thrum message search "<term>"            Pro: full-text search — use instead of paging; stale unread sorts last (Free: thrum inbox --unread --from @<sender>)
 thrum sent                               List messages you sent
 thrum sent --unread                      Sent messages with unread recipients
 thrum message read --all --force         Mark ALL unread as read (run `read --all` alone first — dry run)
@@ -75,7 +75,7 @@ thrum session end                        End session
 thrum session set-intent "..."           Update work description
 thrum state set --kind <k> --scope <s> --value '<json>'   Upsert your personal state
 thrum state list                         List your state entries
-thrum queue list                         List your committed-work bundles
+thrum queue list [--assigned <agent>]    List your committed-work bundles (rows show assignees; --assigned filters)
 thrum overview                           Combined status + team + inbox
 /thrum:update-project                    Guided project state update (only the coordinator responsible for this repo's project state)
 /thrum:load-context                      Restore session after compaction (runs thrum prime)
@@ -166,7 +166,7 @@ It calls `thrum wait` (blocking) and returns when messages arrive. See
 - `thrum prime` gathers identity, team, inbox, git context, sync health
 - SessionStart hook auto-runs `thrum prime` on session start (including
   post-compact resume)
-- PreCompact is NOT registered — run `/thrum:compact` to save a restart
+- PreCompact is NOT registered — run `/thrum-compact` to save a restart
   snapshot deliberately before compacting
 - **After compaction:** resume from the Resume Plan in the injected `# Previous Session Context`; check your personal
   state with `thrum state list` and your committed work with `thrum queue list`

@@ -143,8 +143,8 @@ unread sorts LAST exactly when it has waited longest — the oldest backlog is
 exactly what a default-page check can't see:
 
 ```bash
-thrum message search "<term>"                  # full-text across all messages (positional query, no --limit)
-thrum inbox -q "<term>"                        # same full-text search, scoped to your inbox (aliases: --grep, --match)
+thrum message search "<term>"                  # Pro: full-text across all messages (positional query, no --limit)
+thrum inbox -q "<term>"                        # Pro: same full-text search, scoped to your inbox (aliases: --grep, --match)
 thrum message reindex                          # rebuild the FTS index if search looks wrong
 ```
 
@@ -204,7 +204,7 @@ thrum message read --all                       # DRY RUN: list what --apply/--fo
 thrum message read --all --apply               # Mark the shown (already-seen) candidates
 thrum message read --all --force               # Mark ALL unread, seen or not (needs a fresh `--all` dry run first)
 thrum message read --all --from @reviewer      # DRY RUN restricted to one sender (also scopes --apply/--force)
-thrum message search "<term>"                  # Full-text search across all messages (see § inbox above)
+thrum message search "<term>"                  # Pro: full-text search across all messages (see § inbox above)
 thrum message reindex                          # Rebuild the FTS index if search looks wrong
 ```
 
@@ -462,7 +462,9 @@ thrum prime --json
 thrum state set --kind <kind> --scope <scope> --value '<json>'   # Upsert your personal state
 thrum state list                               # List your state entries
 thrum state show <kind>:<scope>                # Full metadata for one entry
-thrum queue list                               # List committed-work bundles
+thrum queue list [--assigned <agent>]          # List committed-work bundles (rows show assignees)
+thrum queue assign <id> <agent> [<agent>...]   # Add assignees
+thrum queue unassign <id> <agent> [<agent>...] # Remove assignees (absent ones are reported, not written)
 thrum queue show <id>                          # Show one bundle
 ```
 

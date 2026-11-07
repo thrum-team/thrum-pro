@@ -49,10 +49,11 @@ thrum worktree create my-feature
 
 ### Existing worktree
 
-For a worktree that already exists without thrum setup, use `tmux create`
-directly:
+For a worktree that already exists without thrum setup, wire the redirect with
+`thrum worktree adopt`, then create the session:
 
 ```bash
+thrum worktree adopt /path/to/worktree
 thrum tmux create existing-feature --cwd /path/to/worktree \
   --name impl_existing --role implementer --module existing
 thrum tmux launch existing-feature

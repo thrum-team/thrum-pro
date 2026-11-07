@@ -26,7 +26,7 @@ thrum send --to @name1 --to @name2 --body-file msg.md   # Multiple explicit reci
 thrum reply <msg-id> --body-file reply.md          # Reply (same audience; NO --to — recipient comes from the message)
 thrum inbox                              List messages (never marks them read)
 thrum inbox --unread                     Unread only (never marks them read)
-thrum message search "<term>"            Full-text search — use instead of paging; stale unread sorts last
+thrum message search "<term>"            Pro: full-text search — use instead of paging; stale unread sorts last (Free: thrum inbox --unread --from @<sender>)
 thrum sent                               List messages you sent
 thrum sent --unread                      Sent messages with unread recipients
 thrum message read --all --force         Mark ALL unread as read (run `read --all` alone first — dry run)
@@ -76,7 +76,7 @@ thrum session end                        End session
 thrum session set-intent "..."           Update work description
 thrum state set --kind <k> --scope <s> --value '<json>'   Upsert your personal state
 thrum state list                         List your state entries
-thrum queue list                         List your committed-work bundles
+thrum queue list [--assigned <agent>]    List your committed-work bundles (rows show assignees; --assigned filters)
 thrum overview                           Combined status + team + inbox
 /thrum:update-project                    Guided project state update (only the coordinator responsible for this repo's project state)
 /thrum:load-context                      Restore session after compaction (runs thrum prime)

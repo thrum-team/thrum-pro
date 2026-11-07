@@ -244,23 +244,19 @@ git-safety rule).
 ### Create branch + worktree + agent + launch runtime
 
 ```bash
-# 1. Branch + worktree
-git worktree add -b feature/<topic>-brainstorm \
-  /Users/<you>/.thrum/worktrees/thrum/<topic>-brainstorm \
-  <base-branch>
-
-# 2. Register the agent and create the tmux session in one call
-thrum tmux create <topic>-brainstorm \
-  --cwd /Users/<you>/.thrum/worktrees/thrum/<topic>-brainstorm \
-  --role researcher \
+# One command: branch + worktree + redirect + agent registration + tmux session + runtime launch
+thrum worktree create <topic>-brainstorm \
+  --branch feature/<topic>-brainstorm \
+  --base <base-branch> \
   --name researcher_<topic_underscore> \
+  --role researcher \
   --module <topic_underscore> \
   --intent "Brainstorm: <one-line topic description>" \
   --runtime claude
-
-# 3. Launch the runtime in the session
-thrum tmux launch <topic>-brainstorm
 ```
+
+Never `git worktree add` an agent worktree: it leaves no `.thrum/redirect` and
+lands outside `worktrees.base_path`. `thrum worktree create` wires both.
 
 The runtime auto-primes via the SessionStart hook. Do NOT manually inject
 `/thrum:prime` via send-keys (per `coordinator-dispatching-work` discipline).

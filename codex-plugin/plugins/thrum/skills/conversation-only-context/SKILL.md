@@ -32,8 +32,9 @@ persistent subagent that writes its result to a file.
 2. Execute the resume plan from the newest restart snapshot.
 3. Reconcile `thrum queue list` against
    `thrum state show personal_state:current`.
-4. Read `thrum inbox --unread` **and** run `thrum message search` — stale unread
-   sorts last and is missed by the inbox page. Mark each processed message read
+4. Read `thrum inbox --unread` **and** (Pro) run `thrum message search` — stale
+   unread sorts last and is missed by the inbox page; Free: add
+   `thrum inbox --unread --from @<sender>`. Mark each processed message read
    (`thrum message read <id>`).
 5. Where the snapshot lists live subagents (§ restart handoff), respawn each one
    with its result file as seed before doing its work yourself.

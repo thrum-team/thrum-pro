@@ -7,7 +7,7 @@ description: "Stage and verify a comprehensive snapshot, settle owned background
 
 Compose a comprehensive 16-section prose continuation, write it directly to your
 restart file, verify it landed, then send `/summarize` to your own tmux pane. Same
-in-place semantics as `/thrum:compact` — the agent stays ALIVE, its background
+in-place semantics as `/thrum-compact` — the agent stays ALIVE, its background
 loops and cron schedules survive (confirmed empirically), no session end, no
 tmux kill.
 

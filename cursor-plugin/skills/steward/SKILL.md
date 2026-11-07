@@ -125,5 +125,5 @@ relaying it. Surface the question, carry the answer back.
 
 ## Persist before compacting
 
-Before `/thrum:compact`, persist your load-bearing context. With a Pro licence write `thrum state` and `thrum queue`;
+Before `/thrum-compact`, persist your load-bearing context. With a Pro licence write `thrum state` and `thrum queue`;
 without one (`not entitled`), keep the pinned summary message described above current instead.

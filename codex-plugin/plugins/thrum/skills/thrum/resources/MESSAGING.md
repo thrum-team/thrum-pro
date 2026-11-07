@@ -21,9 +21,11 @@
 
 6. **Search — do not page through the inbox to find old messages.** The default
    page is 10, newest-first, so stale unread sorts LAST exactly when it has
-   waited longest. Use `thrum message search "<term>"` (full-text, positional
-   query, no `--limit`) or `thrum inbox -q "<term>"` (same search scoped to your
-   inbox). `thrum message reindex` rebuilds the FTS index if search looks wrong.
+   waited longest. Pro: use `thrum message search "<term>"` (full-text,
+   positional query, no `--limit`) or `thrum inbox -q "<term>"` (same search
+   scoped to your inbox). `thrum message reindex` rebuilds the FTS index if
+   search looks wrong. Free: narrow with `thrum inbox --unread --from @<sender>`
+   or `--since`/`--scope`.
 7. **Reply** — `thrum reply <msg-id> --body-file reply.md` (see Addressing for
    the no-`--to` rule). Do not reply to a message that only thanks,
    acknowledges, confirms receipt or signs off ("thanks", "ok", "got it",

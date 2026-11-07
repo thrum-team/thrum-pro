@@ -75,7 +75,9 @@ optimization.
 ## Check the target's queue before you dispatch (R3)
 
 **Spread the load:** if you have more than one orchestrator or implementer, don't send every epic, bead or fix to
-the same one. List them (`thrum team --all`) and pick the least loaded.
+the same one. List the live (◍) rows by role with `thrum team --all --role orchestrator --compact` (implementers:
+`--role implementer`), compare against `thrum queue list` assignees and stale markers, pick an idle one and spread
+the work, and `thrum queue assign` the bundle the same turn.
 
 Before dispatching, read the target's load two ways: its queue AND its pane. `thrum queue list --agent <target>` (a
 well-run orchestrator keeps its queue current) plus a quick `thrum tmux capture <target>` to see what it is mid-task on
@@ -179,6 +181,20 @@ folded-in ones.
 
 **Expect returns, and act on them.** A candidate returned as already-fixed is only
 half-drained until you actually close the bead.
+
+## Create agent worktrees with `thrum worktree create`
+
+**How to apply:** One command makes the branch, worktree, `.thrum/redirect`,
+agent registration, tmux session and runtime launch:
+
+```bash
+thrum worktree create <name> -b <branch> --base <base-ref> \
+  --name <agent> --role <role> --module <module> --intent "<one line>"
+```
+
+Never `git worktree add` an agent worktree: it leaves no `.thrum/redirect` and
+can land outside `worktrees.base_path`. A worktree that already exists is wired
+with `thrum worktree adopt <path>`.
 
 ## Prompt construction for implementers
 

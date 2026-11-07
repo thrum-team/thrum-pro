@@ -231,8 +231,8 @@ the first tool call. Accept it once, before starting Codex:
 - in a terminal, run a normal command such as `thrum whoami`, read the prompt
   and type `yes`; or
 - without a terminal, run a normal command with the variable set to the bundled
-  EULA version, for example `THRUM_ACCEPT_EULA=0.9.10 thrum whoami` (the version
-  is currently `0.9.10`; the prompt and the refusal message name the version
+  EULA version, for example `THRUM_ACCEPT_EULA=0.9.11 thrum whoami` (the version
+  is currently `0.9.11`; the prompt and the refusal message name the version
   they want). Starting Codex with `THRUM_ACCEPT_EULA` set to that version also
   records it, because the first hook runs `thrum` with it.
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Transcript Search"
+  short_description: "Use when you need to search past sessions, find what we decided about a topic, recall an earlier conversation, find where an agent discussed something, search agent history or transcripts, or work out which session mentioned a word, error or command. Covers thrum transcript search, show and reindex - count first, narrow, search with a small limit, read one window, delegate broad questions to a cheap sub-agent."
+  default_prompt: "Use when you need to search past sessions, find what we decided about a topic, recall an earlier conversation, find where an agent discussed something, search agent history or transcripts, or work out which session mentioned a word, error or command. Covers thrum transcript search, show and reindex - count first, narrow, search with a small limit, read one window, delegate broad questions to a cheap sub-agent."

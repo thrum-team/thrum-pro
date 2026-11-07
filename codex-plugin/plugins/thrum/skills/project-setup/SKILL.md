@@ -655,7 +655,8 @@ Include in each option's description:
 
 **For "Create new worktree"**, suggest:
 
-- Path: `~/.workspaces/{repo}/{feature}` (from CLAUDE.md convention)
+- Path: `worktrees.base_path/{feature}` (`thrum worktree create {feature}` picks
+  it)
 - Branch: `feature/{feature-name}`, cut from the configured merge target
   (`CONFIG=.thrum/config.json; [ -f .thrum/redirect ] && CONFIG="$(cat .thrum/redirect)/config.json"; jq -r '.orchestration.merge_target' "$CONFIG"`
   — a worktree's `.thrum/` holds only a `redirect` file, not its own

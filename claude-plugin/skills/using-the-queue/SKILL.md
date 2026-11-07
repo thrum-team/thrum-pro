@@ -63,7 +63,7 @@ Three distinct fields, do not conflate them:
 | `thrum queue add --title "..."` | Create a bundle in your queue; the title may be the single quoted argument instead (`thrum queue add "..."`), not both |
 | `thrum queue add --from-message <msg_id>` | Special case: lift ONE specific message you received (content->title, author->assigned_by, refs->refs). Use the exact msg-id you're acting on - never head-1 of the inbox |
 | `thrum queue add --title "..." --ref bead:<id>` | Promote a backlog item into active work |
-| `thrum queue list [--status <s>] [--stage <s>] [--agent <id>]` | List your queue (or another agent's); `--status`/`--stage` AND-combine when both given |
+| `thrum queue list [--status <s>] [--stage <s>] [--agent <id>] [--assigned <id>]` | List your queue (or another agent's); `--status`/`--stage` AND-combine when both given; `--assigned` filters to bundles assigned to that agent |
 | `thrum queue show <bundle-id> [--agent <id>]` | Full detail for one bundle |
 | `thrum queue start <bundle-id>` | -> in_progress (clears block_reason) |
 | `thrum queue block <bundle-id> [--reason "..."]` | -> blocked (records the reason; `--reason` required) |
@@ -73,6 +73,7 @@ Three distinct fields, do not conflate them:
 | `thrum queue update <bundle-id> [flags]` | General partial update: `--status`, `--stage`, `--reason` (status_reason), `--title`, `--ref` (repeatable, replaces existing refs), `--priority`, `--assigned-by`, `--assigned-to-remove` - at least one required; `--status=blocked` requires `--reason` |
 | `thrum queue drop <bundle-id>` | DELETE bundle + all its items, any status. This is the normal close-out: drop a bundle in the same turn its work lands |
 | `thrum queue assign <bundle-id> <agent-id>...` | Append agent(s) to assigned_to (routing metadata only) |
+| `thrum queue unassign <bundle-id> <agent-id>...` | Remove agent(s) from assigned_to (clears a stale assignee) |
 | `thrum queue note <bundle-id> --stdin` (or `--body-file <f>`) | Append a dated progress note (append-only; shown by `show`, last note previewed by `list`) |
 | `thrum queue item add <bundle-id> --title "..."` | Add one embedded item |
 | `thrum queue item batch-add <bundle-id> --title "..." --title "..."` | Add several items in one call (shared --ref/--priority) |
@@ -136,6 +137,11 @@ thrum send --to @impl_foo --stdin <<'EOF'      # actually route it
 Assigned you <bundle>: <what + refs>. Add it with: thrum queue add --from-message <this msg id>
 EOF
 ```
+
+Assign at dispatch so `thrum queue list` shows `-> agent` and flags unassigned in-progress bundles;
+remove a stale assignee with `thrum queue unassign <bundle-id> <agent-id>`.
+The other half of a load check is the role-filtered roster: `thrum team --all --role <role> --compact`;
+only live rows (◍) count, not ☓ retired or ☾ sleeping.
 
 Without a Pro licence (`not entitled` / `requires a license`), skip this write and track it in the message thread instead.
 

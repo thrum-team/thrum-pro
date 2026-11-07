@@ -25,7 +25,8 @@ thrum message read --all --force  # Mark ALL unread as read (run `read --all` al
 stale unread sorts LAST exactly when it has been waiting longest.
 
 ```bash
-thrum message search "<term>"      # full-text across all messages
-thrum inbox -q "<term>"            # same full-text search, scoped to your inbox
+thrum message search "<term>"      # Pro: full-text across all messages
+thrum inbox -q "<term>"            # Pro: same full-text search, scoped to your inbox
+thrum inbox --unread --from @<sender>  # Free: narrow without full-text search
 thrum message reindex              # rebuild the FTS index if search looks wrong
 ```

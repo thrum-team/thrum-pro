@@ -328,8 +328,8 @@ Embedding is opt-in. The default config disables RAG; full-text search (`--grep`
 
 ```bash
 thrum config set llm.embedding.enabled true
-thrum config set llm.embedding.provider ollama
-thrum config set llm.embedding.base_url http://localhost:11434
+thrum config set llm.embedding.provider ollama --force
+thrum config set llm.embedding.base_url http://localhost:11434 --force
 thrum config set llm.embedding.model "granite-embedding:30m-english"
 ```
 

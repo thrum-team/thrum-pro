@@ -332,8 +332,9 @@ thrum inbox --unread
 ```
 
 **Search, don't just page.** Stale unread sorts LAST exactly when it's waited
-longest — the default page (10) is blind to it. Run
-`thrum message search "<term>"` instead of paging deeper.
+longest — the default page (10) is blind to it. Pro: run
+`thrum message search "<term>"` instead of paging deeper; Free: narrow with
+`thrum inbox --unread --from @<sender>`.
 
 Handle each message type:
 

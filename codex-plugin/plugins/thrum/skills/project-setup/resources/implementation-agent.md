@@ -175,7 +175,7 @@ cd {{WORKTREE_PATH}}
 thrum quickstart --name {{AGENT_NAME}} --role implementer --module {{BRANCH_NAME}} --intent "Implementing {{EPIC_ID}}"
 thrum inbox --unread
 # Tip: thrum inbox never marks messages read; thrum message read --all --force to mark all unread (run `--all` alone first — dry run)
-# Tip: default page is 10 newest-first — stale unread sorts LAST; use `thrum message search "<term>"` to find it
+# Tip: default page is 10 newest-first — stale unread sorts LAST; Pro: `thrum message search "<term>"` finds it (Free: `thrum inbox --unread --from @<sender>`)
 thrum send --to @{{SUPERVISOR_NAME}} --stdin <<'EOF'
 Starting work on {{EPIC_ID}}
 EOF
@@ -874,7 +874,7 @@ cd {{WORKTREE_PATH}}
 thrum quickstart --name {{AGENT_NAME}} --role implementer --module {{BRANCH_NAME}} --intent "Resuming {{EPIC_ID}}"
 thrum inbox --unread
 # Tip: thrum inbox never marks messages read; thrum message read --all --force to mark all unread (run `--all` alone first — dry run)
-# Tip: default page is 10 newest-first — stale unread sorts LAST; use `thrum message search "<term>"` to find it
+# Tip: default page is 10 newest-first — stale unread sorts LAST; Pro: `thrum message search "<term>"` finds it (Free: `thrum inbox --unread --from @<sender>`)
 
 # 2. Orient from beads and git
 bd show {{EPIC_ID}}                    # What's done?

@@ -200,7 +200,7 @@ ${REPO}/.thrum/restart/${AGENT}.md
 comes from `thrum tmux restart` or `thrum tmux create`). No bash heredoc or
 `cat <<EOF` redirection is needed — write the file directly.
 
-Variants that have a verify step (`/thrum:compact`, `/thrum:restart`) mint a `SNAPSHOT_PATH` and
+Variants that have a verify step (`/thrum-compact`, `/thrum:restart`) mint a `SNAPSHOT_PATH` and
 `SNAPSHOT_NONCE` in their own Step 3 PREP block: write to exactly that path, end
 the file with `<!-- snapshot-nonce: <nonce> -->`, and record both for the verify
 block. The sleep variants have no verify block and need no nonce.
