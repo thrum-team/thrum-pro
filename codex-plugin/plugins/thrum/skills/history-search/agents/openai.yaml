@@ -1,0 +1,4 @@
+interface:
+  display_name: "History Search"
+  short_description: "Use when you need to recall past work - before saying I don't know, what did we decide about X, has anyone seen this error, last time we, do you remember, why did we choose Z, how did we fix this before, what did agent X say or do about Y, search the history of one agent, a group of agents or every agent on the box. Dispatches the cheap history-search sub-agent over thrum transcript search and returns a short cited answer or NOT FOUND."
+  default_prompt: "Use when you need to recall past work - before saying I don't know, what did we decide about X, has anyone seen this error, last time we, do you remember, why did we choose Z, how did we fix this before, what did agent X say or do about Y, search the history of one agent, a group of agents or every agent on the box. Dispatches the cheap history-search sub-agent over thrum transcript search and returns a short cited answer or NOT FOUND."

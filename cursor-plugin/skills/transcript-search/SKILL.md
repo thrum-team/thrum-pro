@@ -15,8 +15,8 @@ there is no cross-peer search. It is a Pro feature.
 2. Narrow with `--agent`, `--worktree`, `--since`, `--until`, `--runtime` or `--in`.
 3. Search with a small limit: `thrum transcript search --limit 5 <query>`.
 4. Read one or two windows only: `thrum transcript show <runtime>:<session>:<seq>`.
-5. For a broad question, dispatch a cheap sub-agent. It runs steps 1-4 and returns at most about 300 words of
-   synthesis with `runtime:session:seq` citations. Never paste raw transcript text back into your own context.
+5. For a broad question, use the `history-search` skill: a cheap sub-agent runs steps 1-4 and returns a short cited
+   answer. Never paste raw transcript text back into your own context.
 
 Each hit prints as `agent · YYYY-MM-DD · runtime:session:seq · snippet`. Pass the `runtime:session:seq` to `show`.
 
