@@ -73,6 +73,8 @@ resolve_thrum_dir() {
 # END resolve-thrum-dir
 THRUM_DIR_RESOLVED=$(resolve_thrum_dir "$THRUM_DIR")
 
+# The Read tool needs an absolute path; THRUM_DIR may be relative (default ".").
+_abs_home=$(cd "$THRUM_DIR" 2>/dev/null && pwd) || _abs_home="$THRUM_DIR"
 IDENTITIES_DIR="$THRUM_DIR/.thrum/identities"
 IDENTITY_AGENT_ID=""
 if command -v jq >/dev/null 2>&1 && [ -d "$IDENTITIES_DIR" ]; then
@@ -123,7 +125,7 @@ fi
 # body holds an apostrophe, and the hook dies before sending. The snapshot path is
 # the only expansion here; its value is never re-parsed.
 if [ -n "$COMPACT_SNAPSHOT" ]; then
-  COMPACT_MSG="You've been compacted. Please read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool)."
+  COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then read your snapshot at ${COMPACT_SNAPSHOT} with the Read tool and execute its resume plan."
 else
   COMPACT_MSG="You've been compacted. No snapshot found — please re-prime normally."
 fi
@@ -157,11 +159,8 @@ fi
 # session finds the lock dir already there and skips; the backgrounded
 # subshell removes the lock once its nudge attempt finishes, so a later,
 # genuinely separate compaction can still nudge again.
-NUDGE_TEXT="Compaction complete - please continue with your resume plan"
-_nudge_pre="$THRUM_DIR/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md"
-if [ -n "$IDENTITY_AGENT_ID" ] && [ -s "$_nudge_pre" ]; then
-  NUDGE_TEXT="Compaction complete. REQUIRED FIRST STEP: use the Read tool on your role preamble ${_nudge_pre} before anything else. It holds your role's instructions, including how messages reach you (tmux agents get messages in the pane; never start a message listener). If you skip it you will be missing important instructions. Then continue with your resume plan"
-fi
+_nudge_pre="$_abs_home/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md"
+NUDGE_TEXT="REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_nudge_pre}, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1."
 NUDGE_TMUX_SESSION=$(thrum whoami --field tmux_session 2>/dev/null) || NUDGE_TMUX_SESSION=""
 NUDGE_TMUX_SESSION="${NUDGE_TMUX_SESSION%%:*}"
 

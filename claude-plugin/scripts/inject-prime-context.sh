@@ -278,8 +278,8 @@ fi
 # measured worse). The same sentence is used in compact.md and the
 # post-compact-recover.sh nudges, with the path resolved from the worktree.
 COMPACT_REQ_LINE=""
-if [ "$HOOK_SOURCE" = "compact" ] && [ -n "$AGENT_WORKTREE" ] && [ -s "${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md" ]; then
-  COMPACT_REQ_LINE="REQUIRED FIRST STEP (right after the one-line ack): use the Read tool on your role preamble ${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md before anything else. It holds your role's instructions, including how messages reach you (tmux agents get messages in the pane; never start a message listener). If you skip it you will be missing important instructions."
+if [ "$HOOK_SOURCE" = "compact" ] && [ -n "$AGENT_WORKTREE" ]; then
+  COMPACT_REQ_LINE="REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan below. The size of this briefing is not a reason to skip step 1."
 fi
 
 # Two-phase build: assemble BANNER, RESTART_PREAMBLE, and BRIEFING into

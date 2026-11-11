@@ -63,6 +63,8 @@ echo "You were just compacted. Run \`thrum prime\` to restore your project conte
 # Best-effort throughout, matching the rest of this hook: any failure here
 # (no identity file, no jq, `thrum send` itself failing) logs to stderr and
 # falls through to the remaining steps — it must never abort the hook.
+# The Read tool needs an absolute path; THRUM_HOME may be relative (default ".").
+_abs_home=$(cd "$THRUM_HOME" 2>/dev/null && pwd) || _abs_home="$THRUM_HOME"
 IDENTITIES_DIR="$THRUM_HOME/.thrum/identities"
 IDENTITY_AGENT_ID=""
 if command -v jq >/dev/null 2>&1 && [ -d "$IDENTITIES_DIR" ]; then
@@ -113,7 +115,7 @@ else
   # when its body holds an apostrophe, and the hook dies before sending. The
   # snapshot path is the only expansion here; its value is never re-parsed.
   if [ -n "$COMPACT_SNAPSHOT" ]; then
-    COMPACT_MSG="You've been compacted. Your Resume Plan is in the auto-injected briefing (# Previous Session Context). If it is missing, read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool)."
+    COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1. If the Resume Plan is missing, read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool)."
   else
     COMPACT_MSG="You've been compacted. No snapshot found — please re-prime normally."
   fi
@@ -155,11 +157,8 @@ nudge_log() {
   echo "post-compact-recover: $1" >&2
 }
 
-NUDGE_TEXT="Compaction complete - please continue with your resume plan"
-_nudge_pre="$THRUM_HOME/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md"
-if [ -n "$IDENTITY_AGENT_ID" ] && [ -s "$_nudge_pre" ]; then
-  NUDGE_TEXT="Compaction complete. REQUIRED FIRST STEP: use the Read tool on your role preamble ${_nudge_pre} before anything else. It holds your role's instructions, including how messages reach you (tmux agents get messages in the pane; never start a message listener). If you skip it you will be missing important instructions. Then continue with your resume plan"
-fi
+_nudge_pre="$_abs_home/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md"
+NUDGE_TEXT="REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_nudge_pre}, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1."
 NUDGE_TMUX_SESSION=$(thrum whoami --field tmux_session 2>/dev/null) || NUDGE_TMUX_SESSION=""
 if [ -z "$NUDGE_TMUX_SESSION" ] && [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
   # whoami could not name the session (daemon slow/down); the hook runs inside

@@ -249,7 +249,7 @@ if [ "$SNAPSHOT_OK" = 1 ] && [ "$SESSION_OK" = 1 ]; then
     echo "Report this to your coordinator (or the operator if you are top-level) and stop; a human or coordinator must inspect the pane and submit or clear it."
     exit 1
   fi
-  RESUME_PROMPT="Compaction complete - please continue: your Resume Plan is in the auto-injected briefing (# Previous Session Context). If it is missing, read ${SNAPSHOT} or the newest *-restart.md in .thrum/agents/${AGENT}/sessions/ of the main repo, then execute its numbered resume plan."
+  RESUME_PROMPT="Compaction complete. Do these two steps in order. STEP 1 - Read your role preamble with the Read tool, IN FULL: ${REPO}/.thrum/context/${AGENT}_preamble.md. Read every section to the last line. Do not skip, skim or stop at the first screen, and do not go to step 2 until you have read all of it. It holds your role's instructions, including how messages reach you (in tmux, messages arrive in your pane; never start a message listener). STEP 2 - Only after step 1, follow the Resume Plan in the auto-injected briefing (# Previous Session Context). If it is missing, read ${SNAPSHOT} or the newest *-restart.md in .thrum/agents/${AGENT}/sessions/ of the main repo, then execute its numbered resume plan."
   if [ "$SEND_RC" -ne 0 ]; then
     echo "ERROR: thrum tmux send exited ${SEND_RC} — the daemon-routed self-send failed; it will NOT queue or deliver /compact."
     # Fail-loud fallback, NOT silent idle: attempt the compact command
