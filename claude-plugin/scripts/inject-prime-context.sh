@@ -272,6 +272,16 @@ if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFIN
   esac
 fi
 
+# Post-compact REQUIRED line. After a compaction the resume prompt is the
+# strongest turn and names no preamble, so say plainly that reading it is the
+# first step. The startup SPLIT line above is unchanged (reworded variants
+# measured worse). The same sentence is used in compact.md and the
+# post-compact-recover.sh nudges, with the path resolved from the worktree.
+COMPACT_REQ_LINE=""
+if [ "$HOOK_SOURCE" = "compact" ] && [ -n "$AGENT_WORKTREE" ] && [ -s "${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md" ]; then
+  COMPACT_REQ_LINE="REQUIRED FIRST STEP (right after the one-line ack): use the Read tool on your role preamble ${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md before anything else. It holds your role's instructions, including how messages reach you (tmux agents get messages in the pane; never start a message listener). If you skip it you will be missing important instructions."
+fi
+
 # Two-phase build: assemble BANNER, RESTART_PREAMBLE, and BRIEFING into
 # separate variables, total their byte count, then choose the
 # size-appropriate directive and emit in the canonical order.
@@ -366,6 +376,9 @@ append_to ACK_INSTRUCTION $'\n'
 
 # Emit in canonical order: banner → directive → ack → restart preamble →
 # briefing. Banner + directive + ack always land inside the 2KB preview.
+if [ -n "$COMPACT_REQ_LINE" ]; then
+  printf '%s\n\n' "$COMPACT_REQ_LINE"
+fi
 if [ -n "$SPLIT_FIRST_LINE" ]; then
   printf '%s\n\n' "$SPLIT_FIRST_LINE"
 fi

@@ -157,6 +157,11 @@ fi
 # session finds the lock dir already there and skips; the backgrounded
 # subshell removes the lock once its nudge attempt finishes, so a later,
 # genuinely separate compaction can still nudge again.
+NUDGE_TEXT="Compaction complete - please continue with your resume plan"
+_nudge_pre="$THRUM_DIR/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md"
+if [ -n "$IDENTITY_AGENT_ID" ] && [ -s "$_nudge_pre" ]; then
+  NUDGE_TEXT="Compaction complete. REQUIRED FIRST STEP: use the Read tool on your role preamble ${_nudge_pre} before anything else. It holds your role's instructions, including how messages reach you (tmux agents get messages in the pane; never start a message listener). If you skip it you will be missing important instructions. Then continue with your resume plan"
+fi
 NUDGE_TMUX_SESSION=$(thrum whoami --field tmux_session 2>/dev/null) || NUDGE_TMUX_SESSION=""
 NUDGE_TMUX_SESSION="${NUDGE_TMUX_SESSION%%:*}"
 
@@ -175,7 +180,7 @@ if [ -n "$NUDGE_TMUX_SESSION" ] && command -v thrum >/dev/null 2>&1; then
   fi
   if mkdir "$NUDGE_LOCK_DIR" 2>/dev/null; then
     ( sleep "${THRUM_POSTCOMPACT_NUDGE_DELAY:-10}"
-      thrum tmux send "$NUDGE_TMUX_SESSION" "Compaction complete - please continue with your resume plan" >/dev/null 2>&1 || true
+      thrum tmux send "$NUDGE_TMUX_SESSION" "$NUDGE_TEXT" >/dev/null 2>&1 || true
       rm -r "${NUDGE_LOCK_DIR:?}" 2>/dev/null || true
     ) >/dev/null 2>&1 &
     disown 2>/dev/null || true

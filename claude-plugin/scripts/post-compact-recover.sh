@@ -171,6 +171,11 @@ nudge_log() {
   echo "post-compact-recover: $1" >&2
 }
 
+NUDGE_TEXT="Compaction complete - please continue with your resume plan"
+_nudge_pre="$THRUM_HOME/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md"
+if [ -n "$IDENTITY_AGENT_ID" ] && [ -s "$_nudge_pre" ]; then
+  NUDGE_TEXT="Compaction complete. REQUIRED FIRST STEP: use the Read tool on your role preamble ${_nudge_pre} before anything else. It holds your role's instructions, including how messages reach you (tmux agents get messages in the pane; never start a message listener). If you skip it you will be missing important instructions. Then continue with your resume plan"
+fi
 NUDGE_TMUX_SESSION=$(thrum whoami --field tmux_session 2>/dev/null) || NUDGE_TMUX_SESSION=""
 if [ -z "$NUDGE_TMUX_SESSION" ] && [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
   # whoami could not name the session (daemon slow/down); the hook runs inside
@@ -218,7 +223,7 @@ elif command -v thrum >/dev/null 2>&1; then
       while [ "$_attempt" -le 3 ]; do
         # `|| _rc=$?` keeps a failing send from tripping this file's `set -e`.
         _rc=0
-        thrum tmux send "$NUDGE_TMUX_SESSION" "Compaction complete - please continue with your resume plan" >/dev/null 2>&1 || _rc=$?
+        thrum tmux send "$NUDGE_TMUX_SESSION" "$NUDGE_TEXT" >/dev/null 2>&1 || _rc=$?
         if [ "$_rc" -eq 0 ]; then break; fi
         if [ "$_rc" -eq 3 ] || [ "$_rc" -eq 4 ]; then
           nudge_log "tmux send rc=${_rc} for ${NUDGE_TMUX_SESSION}: text typed but Enter withheld/unknown — NOT retrying; inspect the pane"

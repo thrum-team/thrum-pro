@@ -356,12 +356,18 @@ case "$HOOK_CAP" in
   ''|*[!0-9]*) HOOK_CAP=0 ;;
 esac
 
+# Post-compact REQUIRED line (same sentence as the claude hook).
+COMPACT_REQ_LINE=""
+if [ "$HOOK_SOURCE" = "compact" ] && [ -n "$AGENT_WORKTREE" ] && [ -s "${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md" ]; then
+  COMPACT_REQ_LINE="REQUIRED FIRST STEP (right after the one-line ack): use the Read tool on your role preamble ${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md before anything else. It holds your role's instructions, including how messages reach you (tmux agents get messages in the pane; never start a message listener). If you skip it you will be missing important instructions."
+fi
+
 byte_len() { printf '%s' "$1" | wc -c | tr -d '[:space:]'; }
 
 TRUNCATED=0
 build_directive
 build_briefing_head
-FULL_LEN=$(( $(byte_len "$BANNER") + $(byte_len "$DIRECTIVE") + $(byte_len "$ACK_INSTRUCTION") + $(byte_len "$RESTART_PREAMBLE") + $(byte_len "$BRIEFING") + $(byte_len "$PRIME_OUTPUT") + $(byte_len "$SPLIT_FIRST_LINE") + 1 ))
+FULL_LEN=$(( $(byte_len "$BANNER") + $(byte_len "$DIRECTIVE") + $(byte_len "$ACK_INSTRUCTION") + $(byte_len "$RESTART_PREAMBLE") + $(byte_len "$BRIEFING") + $(byte_len "$PRIME_OUTPUT") + $(byte_len "$SPLIT_FIRST_LINE") + $(byte_len "$COMPACT_REQ_LINE") + 1 ))
 if [ "$HOOK_CAP" -gt 0 ] && [ "$FULL_LEN" -gt "$HOOK_CAP" ]; then
   TRUNCATED=1
   build_directive
@@ -371,7 +377,7 @@ if [ "$HOOK_CAP" -gt 0 ] && [ "$FULL_LEN" -gt "$HOOK_CAP" ]; then
   else
     TRUNC_NOTICE=$'\n\n[thrum: hook output truncated to fit this runtime'"'"'s '"${HOOK_CAP}"'-byte cap. Run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime` once and read its output fully) ONCE and read that file for the full briefing.]\n'
   fi
-  FIXED_LEN=$(( $(byte_len "$BANNER") + $(byte_len "$DIRECTIVE") + $(byte_len "$ACK_INSTRUCTION") + $(byte_len "$RESTART_PREAMBLE") + $(byte_len "$BRIEFING") + $(byte_len "$TRUNC_NOTICE") + $(byte_len "$SPLIT_FIRST_LINE") ))
+  FIXED_LEN=$(( $(byte_len "$BANNER") + $(byte_len "$DIRECTIVE") + $(byte_len "$ACK_INSTRUCTION") + $(byte_len "$RESTART_PREAMBLE") + $(byte_len "$BRIEFING") + $(byte_len "$TRUNC_NOTICE") + $(byte_len "$SPLIT_FIRST_LINE") + $(byte_len "$COMPACT_REQ_LINE") ))
   BUDGET=$(( HOOK_CAP - FIXED_LEN - 16 ))
   if [ "$BUDGET" -gt 0 ]; then
     # Cut on a line boundary so a multi-byte character is never split: take
@@ -405,6 +411,9 @@ fi
 
 # Emit in canonical order: banner → directive → ack → restart preamble →
 # briefing. Banner + directive + ack always land inside the preview.
+if [ -n "$COMPACT_REQ_LINE" ]; then
+  printf '%s\n\n' "$COMPACT_REQ_LINE"
+fi
 if [ -n "$SPLIT_FIRST_LINE" ]; then
   printf '%s\n\n' "$SPLIT_FIRST_LINE"
 fi
