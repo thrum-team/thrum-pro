@@ -40,6 +40,18 @@ matching section below.
 
 ---
 
+## New in 1.1.2
+
+**Role bundles (Pro).** Package a role, with its role files and skills, as one zip and
+install it on any machine with `thrum roles bundle install <zip>`. Use `list`, `pack`
+and `remove` to manage bundles, or the new **Roles** tab in Settings. An install archives
+any bundle it replaces (nothing is deleted), and the bundle's skills are copied into an
+agent's worktree before the agent starts. See `thrum roles bundle --help`.
+
+Plus several stability and UI fixes. 1.1.2 makes no database change.
+
+---
+
 ## Installing the plugin
 
 Every plugin talks to the `thrum` CLI on your `PATH`. This repo ships plugin text
@@ -374,7 +386,7 @@ The installer does **not** accept the licence for you. The terms are saved to
 
 Options:
 
-- Pin a version: `curl -fsSL https://thrum.team/install.sh | VERSION=v1.1.0 bash`
+- Pin a version: `curl -fsSL https://thrum.team/install.sh | VERSION=v1.1.2 bash`
 - Install elsewhere: `curl -fsSL https://thrum.team/install.sh | INSTALL_DIR=/path bash`
 - Uninstall: `curl -fsSL https://thrum.team/install.sh | bash -s -- --uninstall`
   (your `~/.thrum` directory is left alone)
