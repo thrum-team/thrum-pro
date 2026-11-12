@@ -1,4 +1,4 @@
 interface:
   display_name: "Choosing Subagent Models"
-  short_description: "Use before launching a subagent, an Agent or Task call, or an Explore agent, and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."
-  default_prompt: "Use before launching a subagent, an Agent or Task call, or an Explore agent, and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."
+  short_description: "Use before launching a subagent, an Agent or Task call, or an Explore agent, before any tmux agent launch on any runtime (`thrum worktree create --name`, `thrum tmux create`/`launch`), and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."
+  default_prompt: "Use before launching a subagent, an Agent or Task call, or an Explore agent, before any tmux agent launch on any runtime (`thrum worktree create --name`, `thrum tmux create`/`launch`), and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."

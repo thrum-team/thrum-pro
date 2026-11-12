@@ -73,9 +73,8 @@ resolve_thrum_dir() {
 # END resolve-thrum-dir
 THRUM_DIR_RESOLVED=$(resolve_thrum_dir "$THRUM_DIR")
 
-# The Read tool needs an absolute path; THRUM_DIR may be relative (default ".").
-_abs_home=$(cd "$THRUM_DIR" 2>/dev/null && pwd) || _abs_home="$THRUM_DIR"
 IDENTITIES_DIR="$THRUM_DIR/.thrum/identities"
+_abs_home=$(cd "$THRUM_DIR" 2>/dev/null && pwd) || _abs_home="$THRUM_DIR"
 IDENTITY_AGENT_ID=""
 if command -v jq >/dev/null 2>&1 && [ -d "$IDENTITIES_DIR" ]; then
   for _id_file in "$IDENTITIES_DIR"/*.json; do
@@ -127,7 +126,7 @@ fi
 if [ -n "$COMPACT_SNAPSHOT" ]; then
   COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then read your snapshot at ${COMPACT_SNAPSHOT} with the Read tool and execute its resume plan."
 else
-  COMPACT_MSG="You've been compacted. No snapshot found — please re-prime normally."
+  COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) No snapshot found: please re-prime normally."
 fi
 
 if command -v thrum >/dev/null 2>&1; then

@@ -25,6 +25,9 @@ wake is to run ONE cycle and exit — never to fix, never to write code.
 
 ## The loop
 
+Liveness rule: an agent is alive only when `thrum ping` returns verdict `alive`; `unverified` and
+`owning-daemon-unreachable` are unknown, never treat them as alive or dead.
+
 ```text
 ┌─ scan ───────────────────────────────────────────────────────────────┐
 │ thrum watcher scan --id <id>                                          │

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onboarding Checks"
+  short_description: "Use when an owner wants small checks that warn when work drifts - a branch that grows too big, work that stalls, or a security note that goes stale - and wants to set how often they run and who hears about them. First-time setup, a repository with no drift checks, or a team changing the thresholds. Installs the check scripts and writes .thrum/policy/checks.json. Runs as one part of project-onboarding and on its own."
+  default_prompt: "Use when an owner wants small checks that warn when work drifts - a branch that grows too big, work that stalls, or a security note that goes stale - and wants to set how often they run and who hears about them. First-time setup, a repository with no drift checks, or a team changing the thresholds. Installs the check scripts and writes .thrum/policy/checks.json. Runs as one part of project-onboarding and on its own."

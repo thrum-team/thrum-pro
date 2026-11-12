@@ -16,7 +16,7 @@
 > etc.) without hook support still use it.
 
 The message-listener is a background sub-agent that blocks on `thrum wait` and
-returns when messages arrive. A PID file (`.thrum/var/<agent_id>-listener.pid`)
+returns when messages arrive. A PID file (`.thrum/var/<name>-listener.pid`)
 prevents duplicate listeners — spawning when one is already running is safe.
 
 ## Quick Start
@@ -25,12 +25,12 @@ prevents duplicate listeners — spawning when one is already running is safe.
 Task(
   subagent_type="message-listener",
   model="<per choosing-subagent-models>",  # cheapest tier
-  prompt="Listen for Thrum messages.\nSTEP_1: thrum-startup --listener-heartbeat\nSTEP_2: thrum wait --timeout 8m --after -15s --agent-name <agent_id>"
+  prompt="Listen for Thrum messages.\nSTEP_1: thrum-startup --listener-heartbeat\nSTEP_2: thrum wait --timeout 8m --after -15s --agent-name <name>"
 )
 ```
 
-Replace `/path/to/repo` with the actual repo path and `<agent_id>` with your
-agent name. `thrum prime` outputs a ready-to-use spawn instruction with both
+Replace `/path/to/repo` with the actual repo path and `<name>` with your agent
+name. `thrum prime` outputs a ready-to-use spawn instruction with both
 pre-filled.
 
 ## How It Works
@@ -59,7 +59,7 @@ Automatically respawn the listener if it dies or is lost after compaction.
 ```text
 CronCreate(
   cron="*/30 * * * *",
-  prompt="Check the listener PID file at .thrum/var/<agent_id>-listener.pid.\nIf the file does not exist, or if kill -0 <pid> fails (process not running),\nspawn a new listener:\n\nAgent(subagent_type=\"message-listener\", model=\"<per choosing-subagent-models>\", prompt=\"Listen for Thrum messages.\\nSTEP_1: thrum-startup --listener-heartbeat\\nSTEP_2: thrum wait --timeout 8m --after -15s --agent-name <agent_id>\")"
+  prompt="Check the listener PID file at .thrum/var/<name>-listener.pid.\nIf the file does not exist, or if kill -0 <pid> fails (process not running),\nspawn a new listener:\n\nAgent(subagent_type=\"message-listener\", model=\"<per choosing-subagent-models>\", prompt=\"Listen for Thrum messages.\\nSTEP_1: thrum-startup --listener-heartbeat\\nSTEP_2: thrum wait --timeout 8m --after -15s --agent-name <name>\")"
 )
 ```
 

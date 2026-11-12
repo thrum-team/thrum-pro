@@ -1,6 +1,6 @@
 ---
 name: choosing-subagent-models
-description: "Use before launching a subagent, an Agent or Task call, or an Explore agent, and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."
+description: "Use before launching a subagent, an Agent or Task call, or an Explore agent, before any tmux agent launch on any runtime (`thrum worktree create --name`, `thrum tmux create`/`launch`), and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."
 ---
 
 # Choosing Subagent Models
@@ -48,6 +48,11 @@ launch, never from memory or from a copied example:
 ```bash
 jq -r '.runtime.role_models' .thrum/config.json
 ```
+
+A runtime's preset tiers: `thrum runtime show <runtime> --json` (the `tier_models` object).
+
+A model name from a requester (e.g. `luna`) is not an ID: resolve it against
+`thrum runtime show <runtime> --json` and the runtime's own config before passing it to `--model`.
 
 Launching with `--role` and no `--model` resolves the role default
 automatically. When pinning `--model` or `--effort`, read the effective values
@@ -247,8 +252,8 @@ that stops at depth 1 is absent where the work happens.
 - Pair every zero/empty result with a control that MUST return non-zero.
 ```
 
-⚠️ Never let a child take **"don't ask again"** on a modal — it removes the only
-signal this condition produces.
+⚠️ Never let a child take **"don't ask again"** on the poll-loop or until-loop modal above — it removes the only
+signal that condition produces.
 
 ### Cheap subagents → fan out, don't pile up
 
@@ -308,6 +313,9 @@ thrum tmux capture <agent-name> --format=json | python3 -c \
 Still check the exit status before trusting either form — a FAILED capture exits
 nonzero and the annotated header says `FAILED`, but don't discard that signal by
 piping straight into something that only inspects stdout.
+
+Also read the pane text for the runtime's own rejection (e.g. `The 'luna' model is not supported`);
+the status line or footer can echo a rejected pin.
 
 That is the runtime reporting its RESOLVED config, and it is the only check that has
 ever produced a true negative on this defect. If it disagrees with the pin, report it —

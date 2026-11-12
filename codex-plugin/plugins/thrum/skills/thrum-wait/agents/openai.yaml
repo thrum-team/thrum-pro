@@ -1,4 +1,4 @@
 interface:
   display_name: "Thrum Wait"
-  short_description: "Block until a message arrives"
+  short_description: "Block until a message arrives, only when not in tmux (tmux agents get messages in the pane)"
   default_prompt: "Run the thrum wait workflow and summarize the result."

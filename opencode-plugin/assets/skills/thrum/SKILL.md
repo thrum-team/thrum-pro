@@ -55,7 +55,7 @@ thrum worktree create <name> --name <agent> --role R --module M    Create worktr
 thrum worktree setup <name> --name <agent> --role R --module M     Alias for worktree create
 thrum whoami                                          Show identity
 thrum team                                            List active agents
-thrum ping @name                                      Check if agent online
+thrum ping @name                                      Check agent process liveness (verdict alive = running)
 thrum who-has <file>                                  Who's editing a file
 ```
 

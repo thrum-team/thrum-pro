@@ -174,8 +174,8 @@ worktree, and blocks two things thrum commands need:
 3. **Filesystem read to the redirect-resolved `.thrum` directory itself**
    (allowlist). A codex agent's own sandboxed Read-tool calls need this to
    load ordinary thrum monitor/support material (`.thrum/role_templates`,
-   `.thrum/hotpath-gate.json`, `.thrum/philosophy.md`, `.thrum/config.json`,
-   etc.) — in a worktree with a redirect, this directory lives outside the
+   `.thrum/config.json`, etc.; the committed `.thrum/policy/` files live in
+   the checkout and need no grant) — in a worktree with a redirect, this directory lives outside the
    current worktree/workspace root, the same way the audit-log dir and
    daemon socket do, so it isn't covered by `extends = ":workspace"` either.
    `.codex/skills` needs no equivalent grant: it is never redirected, so it

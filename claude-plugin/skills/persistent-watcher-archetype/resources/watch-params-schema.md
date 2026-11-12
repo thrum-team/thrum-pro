@@ -17,15 +17,15 @@ If the file itself is missing, or `roster` is missing or empty, the watcher is n
 | `watcher` | string | yes | This node's own agent name. |
 | `parent` | string | yes | Who to notify when something is wrong. `user:<name>` for the human at the root. |
 | `model` | string | yes | Chosen at launch (trust and cost tradeoff). A small model at low effort is enough for most rosters. |
-| `roster` | array | yes | The agents this node watches. Each entry is an agent name, or an object `{"agent_id","hostname","tmux_session"}` (optional `runtime`) for an agent on another machine; the object form is what the SSH capture fallback uses. Never empty. |
+| `roster` | array | yes | The agents this node watches. Each entry is an agent name, or an object `{"agent_id","hostname","tmux_session"}` (optional `runtime`) for an agent on another machine; the object form is what the SSH capture fallback uses. A qualified `agent_id` (`name@daemon`) in a roster entry is kept as given and names exactly that agent; a bare name means this daemon's agent first, else the single remote one, and a name several other daemons share is reported as ambiguous and skipped. The same holds for entries of `expected_inactive_roster` and `sleeping_roster`: a qualified entry declares exactly that ID. Never empty. |
 | `cadence_active` | duration | yes | Pane-capture interval while a roster member looks active. |
 | `cadence_idle` | duration | yes | Pane-capture interval while a roster member looks idle. |
 | `restart_ctx_pct` | int | yes | Self-restart threshold on your own context percentage. Default `50`. |
 | `override` | object or null | no | `{cadence, reason, expires}`: a temporary widening. MUST carry `expires`; on expiry the watcher reverts to base cadence by itself. |
 | `pin_override` | object or null | no | `{target, model, effort, who, when, why, expires}`: a deliberate model or effort pin set by a coordinator. Distinct from `override`; do not merge them. `expires` is mandatory. |
 | `rules` | array | no | `[{when, cadence}]`: a deterministic table for cadence widening. The only sanctioned self-adjustment. |
-| `expected_inactive_roster` | array | no | Roster members the owner expects to be absent (names, or objects with `agent_id`). A failed capture of one does not flag. Any member not listed here still flags when its capture fails. |
-| `sleeping_roster` | array | no | Roster members parked on purpose (names, or objects with `agent_id`). Treated like `expected_inactive_roster`. |
+| `expected_inactive_roster` | array | no | Roster members the owner expects to be absent (names, or objects with `agent_id`). A failed capture of one does not flag. Any member not listed here still flags when its capture fails. Each declared entry and the roster entry are resolved to an agent by the three rules (a full ID matches exactly that ID; a bare name means this daemon's agent first, else the single one elsewhere; several is ambiguous), and the results are compared. An ambiguous declared entry excuses nothing and is reported. If neither side matches any team row, only an identical string excuses. |
+| `sleeping_roster` | array | no | Roster members parked on purpose (names, or objects with `agent_id`). Treated like `expected_inactive_roster`, with the same resolve-then-compare rule. |
 | `secondary_duty` | string | no | A free-form extra duty written by a coordinator, done in addition to the primary duty. |
 
 ## `pin_override`

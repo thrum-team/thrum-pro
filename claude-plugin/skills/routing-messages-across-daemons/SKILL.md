@@ -1,15 +1,16 @@
 ---
 name: routing-messages-across-daemons
-description: "Use when thrum send fails with unknown recipient, when sending a cross-box message to an agent on another daemon, when there is no second hop, when you need to route or relay through a paired peer, reach an agent on another box, or tmux send to a remote agent."
+description: "Use the moment you think you can't reach an agent - you can't see an agent, an agent is on another box or another org or another daemon, a note or another agent says there is no route to it, you're about to ask someone to forward or pass on or relay a message, you're about to send through a coordinator because you can't message the target yourself, or a send says unknown recipient. Loads how to reach any agent yourself."
 ---
 
-# Routing Messages and tmux Commands to Agents on Other Daemons
+# Reaching Any Agent Yourself: Routing Messages and tmux Commands Across Daemons, Boxes and Orgs
 
 Routing and pairing are different things. Pairing connects two daemons directly. Routing sends a message through a
 directly paired peer to an agent that peer knows.
 
 ## Messages
 
+- Try `thrum send --to @<agent>` first; never conclude unreachable from a note or summary.
 - A daemon resolves a recipient from its local agents and from agents registered on its directly paired peers.
 - To reach an agent on a daemon you are not paired with, run once on the SENDING daemon, per remote agent:
 
@@ -47,3 +48,10 @@ deleting them removes the routing.
 `thrum tmux send <agent> [<text>] [--keys K1,K2,...]` goes through the peer-routed `tmux.send` RPC. Both text and
 `--keys` modes work the same against a local session and a remote or peer session. Check the target's peer relationship
 with `thrum peer list` and confirm by effect on the target pane.
+
+`--keys` always prints a receipt line naming the resolved `session:pane` and the daemon that executed the send (the
+remote daemon for a peer send), for example `Keys sent to s:0.0 on d_abc: 1 (pane changed)`. Exit 0: sent (pane changed,
+or the effect could not be verified; an older remote daemon prints `not verified (remote daemon older)`). Exit 5: the
+executing daemon captured the pane before and after and it did not change, so there is no evidence the keys took effect;
+a key that legitimately changes nothing also exits 5, so best-effort callers may ignore it. Exit 1: any other error,
+including a registered agent whose tmux session is absent on the executing daemon (nothing is sent).

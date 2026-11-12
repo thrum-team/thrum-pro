@@ -60,8 +60,9 @@ thrum monitor delete <name|id>
   `thrum quickstart`, or give an explicit recipient. Repair a legacy unresolved
   alias with `thrum monitor update <id> --to @<agent>`, then restart; list/show
   display its unresolved-target warning.
-- `--schedule` takes a 5-field cron expression. `update --schedule` changes the
-  cron of a scheduled monitor at any time. Setting a first schedule or removing
+- `--schedule` takes a 5-field cron expression, evaluated in the daemon
+  process's local time zone (not UTC unless the daemon runs with `TZ=UTC`).
+  `update --schedule` changes the cron of a scheduled monitor at any time. Setting a first schedule or removing
   it (`--schedule ""`) switches the mode, which is refused while the monitor is
   running and allowed while it is stopped.
 - `--debounce` is leading-edge with a 30s minimum (default 1m).

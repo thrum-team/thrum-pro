@@ -2,16 +2,16 @@
 
 ## Thrum vs TaskList/SendMessage
 
-| Need                      | Use Thrum                       | Use TaskList/SendMessage |
-| ------------------------- | ------------------------------- | ------------------------ |
-| Cross-worktree messages   | `thrum send --to @name`         | Not possible             |
-| Persist across compaction | Messages survive in git         | Lost on compaction       |
-| Background notifications  | `thrum wait` + listener pattern | Polling only             |
-| Multi-machine sync        | Git push/pull via daemon        | Local only               |
-| Group messaging           | `thrum send --to @group`        | Broadcast to all         |
-| Track who's editing files | `thrum who-has <file>`          | Not available            |
-| Simple session task list  | Overkill                        | TaskList is better       |
-| Same-session DM           | Works but heavier               | SendMessage is simpler   |
+| Need                      | Use Thrum                                     | Use TaskList/SendMessage |
+| ------------------------- | --------------------------------------------- | ------------------------ |
+| Cross-worktree messages   | `thrum send --to @name`                       | Not possible             |
+| Persist across compaction | Messages survive in git                       | Lost on compaction       |
+| Background notifications  | `thrum wait` + listener pattern (not in tmux) | Polling only             |
+| Multi-machine sync        | Git push/pull via daemon                      | Local only               |
+| Group messaging           | `thrum send --to @group`                      | Broadcast to all         |
+| Track who's editing files | `thrum who-has <file>`                        | Not available            |
+| Simple session task list  | Overkill                                      | TaskList is better       |
+| Same-session DM           | Works but heavier                             | SendMessage is simpler   |
 
 ## Thrum vs Beads
 
@@ -49,7 +49,8 @@ set to `Bash(thrum:*)` — all data is accessed via CLI output, not file reads.
 
 1. **Need to communicate with agents in other worktrees?** → Thrum
 2. **Need messages to survive compaction?** → Thrum
-3. **Need background message monitoring?** → Thrum (listener pattern)
+3. **Need background message monitoring?** → Thrum (listener pattern, only when
+   not in tmux)
 4. **Simple same-session task tracking?** → TaskList
 5. **Quick one-off DM to teammate in same session?** → SendMessage
 6. **Tracking work items with dependencies?** → Beads

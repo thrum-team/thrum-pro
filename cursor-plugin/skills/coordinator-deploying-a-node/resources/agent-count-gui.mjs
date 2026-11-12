@@ -1,24 +1,31 @@
 // Read what the GUI renders for agents: the left-rail heading "Agents (N)", the
 // five active Fleet category badges, and the incomplete-records notice.
 //
-// Needs Playwright and a browser: Playwright's bundled Chromium, or an installed Google Chrome. Node resolves `playwright` from the script's
-// own location, so run it from inside a thrum checkout that has Playwright
-// installed (the checkout root or ui/packages/web-app after
-// `pnpm install --frozen-lockfile`), or copy the script into ui/packages/web-app:
+// Needs Playwright and a browser: Playwright's bundled Chromium, or an installed Google Chrome.
+// Playwright resolves in this order, and the script never installs it:
+//   1. the normal import from the script's own location (a thrum checkout after
+//      `pnpm install --frozen-lockfile`, or a copy in ui/packages/web-app);
+//   2. the npm global root (`npm root -g`), then the playwright-cli package's node_modules
+//      (under that root and under ~/.local/lib/node_modules);
+//   3. the directory named by THRUM_PLAYWRIGHT_PATH (a directory whose node_modules holds playwright).
+// When none works it exits 3 with one message naming THRUM_PLAYWRIGHT_PATH and every location tried.
 //   node <path-to>/agent-count-gui.mjs <ui-url>
 // <ui-url> is the "ui" line of `thrum daemon status` on the node, for example
 // http://localhost:34003/#/fleet. Open the Fleet route; the rail sits beside it.
 // The bundled Chromium is tried first; when it is not installed the script tries the newest
 // installed chromium-<rev> under the Playwright browsers dir (PLAYWRIGHT_BROWSERS_PATH, else the
 // per-user ms-playwright cache), then the installed Chrome (channel 'chrome'). It prints the
-// route used on stderr (browser=...). It NEVER installs a browser: on a node with none of them,
-// it exits 3 and you read the numbers by hand (the manual selectors in the skill).
+// Playwright route (playwright=...) and the browser route (browser=...) on stderr. It NEVER installs
+// a browser: on a node with none of them, it exits 3 and you read the numbers by hand (the manual
+// selectors in the skill).
 // Viewport is 1280x720 so the rail is not collapsed.
 //
 // Prints one JSON line: { rail, fleet, categories, notice_text }. Compare it with
 // agent-count-expected.py run on the node: rail must equal rail_expected and
 // fleet must equal fleet_expected. The notice is information only.
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -28,6 +35,75 @@ const CATEGORIES = ['Working', 'Standby', 'EmptySession', 'RuntimeExited', 'Work
 // Playwright says "Executable doesn't exist" for a missing bundled browser and
 // "Chromium distribution 'chrome' is not found" for a missing channel.
 const MISSING_BROWSER = /Executable doesn't exist|distribution '[^']*' is not found/i;
+
+/** Environment variable naming a directory whose node_modules holds playwright (tried last). */
+export const PLAYWRIGHT_PATH_ENV = 'THRUM_PLAYWRIGHT_PATH';
+
+/** npm's global node_modules root (`npm root -g`), or null when npm cannot be run. Read-only. */
+export function npmGlobalRoot() {
+  try {
+    const out = execFileSync('npm', ['root', '-g'], {
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fallback locations for playwright, in order, after the normal import. `dir` is a
+ * node_modules directory or a directory that has one; `via` is the route name on stderr.
+ */
+export function playwrightSearchDirs(env = process.env, npmRoot = npmGlobalRoot()) {
+  const home = env.HOME || env.USERPROFILE || homedir();
+  const cli = (root) => join(root, '@playwright', 'cli', 'node_modules');
+  const dirs = [];
+  if (npmRoot) {
+    dirs.push({ via: 'npm-root', where: `npm root -g (${npmRoot})`, dir: npmRoot });
+    dirs.push({ via: 'npm-cli', where: `playwright-cli under npm root (${cli(npmRoot)})`, dir: cli(npmRoot) });
+  }
+  const local = join(home, '.local', 'lib', 'node_modules');
+  dirs.push({ via: 'local-cli', where: `playwright-cli under ~/.local (${cli(local)})`, dir: cli(local) });
+  const fromEnv = env[PLAYWRIGHT_PATH_ENV];
+  if (fromEnv) dirs.push({ via: 'env', where: `${PLAYWRIGHT_PATH_ENV} (${fromEnv})`, dir: fromEnv });
+  return dirs;
+}
+
+/**
+ * Loads playwright without installing anything: the normal import first, then each
+ * playwrightSearchDirs entry in order. Resolves { chromium, via }. When every route fails it
+ * throws an Error with code NO_PLAYWRIGHT whose single message names THRUM_PLAYWRIGHT_PATH and
+ * every location tried.
+ */
+export async function loadPlaywright(env = process.env, npmRoot = npmGlobalRoot()) {
+  try {
+    const { chromium } = await import('playwright');
+    return { chromium, via: 'import' };
+  } catch (e) {
+    if (!/package 'playwright'/.test(String((e && e.message) || ''))) throw e;
+  }
+  const tried = ['import from the script location'];
+  if (!npmRoot) tried.push('npm root -g (npm did not run)');
+  for (const { via, where, dir } of playwrightSearchDirs(env, npmRoot)) {
+    tried.push(where);
+    try {
+      const req = createRequire(join(dir, 'agent-count-gui.mjs'));
+      return { chromium: req('playwright').chromium, via };
+    } catch {
+      // not installed at this location; try the next one
+    }
+  }
+  if (!env[PLAYWRIGHT_PATH_ENV]) tried.push(`${PLAYWRIGHT_PATH_ENV} (unset)`);
+  const err = new Error(
+    `playwright not found; tried: ${tried.join('; ')}. Set ${PLAYWRIGHT_PATH_ENV} to a directory whose ` +
+      'node_modules holds playwright. This script does not install anything.',
+  );
+  err.code = 'NO_PLAYWRIGHT';
+  throw err;
+}
 
 /** Where Playwright keeps its downloaded browsers (null when it is a package-local dir). */
 export function playwrightBrowsersDir(env = process.env, platform = process.platform) {
@@ -125,10 +201,18 @@ async function main() {
     console.error('usage: node agent-count-gui.mjs <ui-url>');
     return 2;
   }
-  const { chromium } = await import('playwright');
+  let pw;
+  try {
+    pw = await loadPlaywright();
+  } catch (e) {
+    if (e.code !== 'NO_PLAYWRIGHT') throw e;
+    console.error(`agent-count-gui: ${e.message}`);
+    return 3;
+  }
+  console.error(`agent-count-gui: playwright=${pw.via}`);
   let launched;
   try {
-    launched = await launchBrowser(chromium);
+    launched = await launchBrowser(pw.chromium);
   } catch (e) {
     if (e.code !== 'NO_BROWSER') throw e;
     console.error(`agent-count-gui: ${e.message}`);

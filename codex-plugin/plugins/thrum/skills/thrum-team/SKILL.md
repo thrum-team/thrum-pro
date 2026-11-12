@@ -17,4 +17,6 @@ thrum team                   # Human-readable
 thrum team --json            # Machine-readable
 ```
 
-Use `thrum ping @name` to check if a specific agent is online.
+Use `thrum ping @name` to verify a specific agent's process is running; only the
+verdict `alive` means running, and `unverified` or `owning-daemon-unreachable`
+mean unknown.

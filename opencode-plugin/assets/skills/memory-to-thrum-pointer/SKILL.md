@@ -29,6 +29,22 @@ The topic file carries `thrum_memory: <ID>` in its frontmatter; find it with `gr
 
 Keep the 🔴 only on entries that already have it.
 
+## Personal or box-wide
+
+Decide this first, for each entry. The two tags are exclusive: a record carries one of them.
+
+| The entry is | Helper flag | Tag | Scope | Index line |
+|---|---|---|---|---|
+| Yours alone: your own habits and working notes | `--personal` | `personal` | `agent` | none |
+| Needed by every agent on this machine | `--box-wide` | `indexed_in:runtime_memory` | `project` | yes, in the shared index |
+
+- A `personal` memory reaches you in the personal block that `thrum prime` writes at session start. Add no index line
+  for it. An index line that already exists for the entry stays as it is, unless an index report names it.
+- A box-wide memory reaches agents through its index line, so the line is required.
+- A record that carries both tags is treated as `personal`: an index report never asks for a line for it.
+- A record keeps the scope it was created with. Tag an existing one with `thrum memory edit <ID> --add-tag personal`.
+  A tag does not change scope: an agent-scoped record cannot become box-wide, so create a new record for it.
+
 ## Writing the trigger
 
 Name the situation or action that should make you read the rule, for example "before choosing a model for any role" or
@@ -46,8 +62,13 @@ helper runs thrum from there). It extracts the body, creates or reuses the recor
 line alone.
 
 ```bash
-bash <skill-dir>/resources/to-thrum.sh <topic-file.md> "<trigger>" [agent_rule|lesson]
+bash <skill-dir>/resources/to-thrum.sh <topic-file.md> "<trigger>" [agent_rule|lesson] --personal
+bash <skill-dir>/resources/to-thrum.sh <topic-file.md> "<trigger>" [agent_rule|lesson] --box-wide
 ```
+
+Pass exactly one of `--personal` or `--box-wide`. Without one the helper exits 2 and changes nothing. It sets the tag
+and scope from the table above and keeps the `claude-memory` tag. When the topic file already names a record, the helper
+reuses it, changes nothing on it, and prints the `thrum memory edit` command that adds the tag.
 
 Then do step 6 by hand. The manual steps below are what the helper does.
 
@@ -58,9 +79,15 @@ Then do step 6 by hand. The manual steps below are what the helper does.
    rewrites it:
 
    ```bash
+   # personal
    thrum memory create --kind agent_rule --scope agent \
      --title "<topic file name>" --oneline "<trigger>" \
-     --full @"$SCRATCH/body.md" --tag claude-memory --json
+     --full @"$SCRATCH/body.md" --tag claude-memory --tag personal --json
+
+   # box-wide
+   thrum memory create --kind agent_rule --scope project \
+     --title "<topic file name>" --oneline "<trigger>" \
+     --full @"$SCRATCH/body.md" --tag claude-memory --tag indexed_in:runtime_memory --json
    ```
 
    Use `--kind lesson` for a habit or lesson rather than a rule.
@@ -74,8 +101,60 @@ Then do step 6 by hand. The manual steps below are what the helper does.
    If they differ only by a trailing newline, that is acceptable; note it. Any other difference: stop and do not change
    that index line.
 5. Add `thrum_memory: <ID>` to the topic file's frontmatter `metadata`.
-6. Replace that entry's text in MEMORY.md with the trigger-format line. Change only that one entry. Entries packed on
-   one line with `·` are separate entries: move only the one you are converting and leave its neighbours as they are.
+6. Box-wide entry: replace that entry's text in MEMORY.md with the trigger-format line. Change only that one entry.
+   Entries packed on one line with `·` are separate entries: move only the one you are converting and leave its
+   neighbours as they are. Personal entry: add no index line, and leave the entry's existing line as it is,
+   unless an index report names it.
+
+## Fixing an index report
+
+`thrum prime` can print a section at a fresh start that lists problems in your runtime's shared index file. Fix them
+in that file:
+
+| Runtime | Index file |
+|---|---|
+| Claude Code | `~/.claude/projects/<slug>/memory/MEMORY.md` (the report prints the path) |
+| Muse | `~/.local/share/muse/memory/personal/MEMORY.md` |
+| Codex | `~/.codex/AGENTS.md`, or `AGENTS.md` in `$CODEX_HOME` when that is set to an absolute path (create it when it does not exist) |
+
+Other agents on the machine share the file: read it again just before you edit, change only the lines named, and match
+each finding by its ID, because the line numbers move when another agent edits the file. To judge a finding, read the
+memory with `thrum memory show <ID> --format body --zoom full`.
+
+Nothing in an index is ever deleted. Removing an entry is a human decision, and no finding below asks you to do it.
+
+The Codex and Muse files are shared by every project on the machine, but a project's memories live in that project's
+own store, so a line can point to a memory that belongs to another project. Such a line reads `not found` here and is
+not a mistake: leave it where it is.
+
+| Finding | Meaning | Do |
+|---|---|---|
+| `WRONG line N` | the line points to a memory that is superseded, purged, archived or unknown | repoint it when the memory was superseded and its successor is clear; otherwise leave it and tell the owner (below) |
+| `CHECK line N` | the line's text differs from the memory's text (`memory says:`) | replace the text before `→` with the memory's text; keep the ID |
+| `MISSING <text> → <id>` | a box-wide memory has no line in this runtime's file | add the line ``- <text> → `<id>` `` to this file; the memory may already be in another runtime's index, and the same line fixes it here |
+| `STRAY line N` | the line holds an ID that the report could not read as a pointer | read the line; if it is meant as a pointer, rewrite it as ``- <trigger> → `<id>` ``, otherwise leave it |
+| `SIZE <path> is NN%` | the file is over 75% of 32,768 bytes, the size the report treats as Codex's limit | shorten the longest lines, keeping every pointer; the line has no per-line fix |
+
+An entry packed on one line with `·` is a separate entry: change only the one the finding names.
+
+For a `MISSING` line: the tag `indexed_in:runtime_memory` is box-wide, so each runtime's report lists the memory until
+that runtime's own file has the line. When you add a box-wide memory, add its line to every runtime index file you can
+reach on this machine: the Claude file for this project, the Codex file and the Muse file in the table above. Add only;
+never change another line there. Skip a file you cannot find (except your own runtime's file, which the report says to
+create) and say in your report which file you skipped. An entry you add to a file that is not your runtime's is
+written by you, never by thrum. If an index file is tracked in a repository (for example an AGENTS.md chain; check
+with `git ls-files --error-unmatch <path>` run in its directory), edit it only where this skill already tells you to
+edit that file, and leave any other tracked file as it is. In your report, say which files you changed and which you
+left.
+
+For a `WRONG` line:
+
+- Superseded memory: find the memory that replaced it. `thrum memory show` does not render edges, so search for it with
+  `thrum memory search` on the old memory's text. If exactly one active memory plainly replaces it, repoint the line:
+  put the successor's ID after `→` and its text before it, written the way the old line was written. If you cannot tell
+  which memory replaced it, treat the line as the next case.
+- Purged, `not found`, or archived with no successor: you cannot repoint the line. Leave it in place and change nothing.
+  The report keeps listing it at each fresh start. Tell the owner, who decides whether to remove it.
 
 ## Rules
 

@@ -440,8 +440,11 @@ Flags:
 
 ```bash
 thrum who-has <file>                           # Check which agents are editing a file
-thrum ping @name                               # Check agent presence
-thrum ping planner                             # @ prefix optional
+thrum ping @name                               # Process liveness via owning daemon (agent.reconcile, may correct the row); --json: agent_id, home_daemon, result, phase_before, phase_after, note, liveness
+thrum ping planner                             # @ prefix optional; also printed by `thrum agent status`
+# Verdicts: alive (exit 0); dead, pid-recycled, no-registration, unverified (exit 1); owning-daemon-unreachable (exit 2)
+# Only alive is evidence the process runs; unverified and owning-daemon-unreachable are unknown (neither alive nor dead)
+# Name resolves like thrum send (agent id, prefix:id, unique bare peer name; ambiguous is an error naming the candidates); no display name or role match; a peer-owned agent's verdict comes from its owning daemon
 thrum overview                                 # Combined: identity + team + inbox + sync
 thrum overview --json
 ```
@@ -665,16 +668,32 @@ thrum backup plugin remove --name myplugin
 ## Peer
 
 ```bash
-thrum peer add                                 # Start pairing (displays 4-digit code, blocks 5min)
-thrum peer join <peercode> --type <tailscale|local|...>   # --type is REQUIRED
+thrum peer add --type <tailscale|local|network>   # Start pairing: shows a peercode (16-digit code), blocks 5min; --type is REQUIRED
+thrum peer add --type <type> --profile phone   # Pair a phone; held until you approve it
+thrum peer join <peercode> --type <tailscale|local|network|repair>   # --type is REQUIRED
 thrum peer list                                # List paired peers
 thrum peer remove <name>                       # Remove a paired peer
 thrum peer status                              # Detailed sync status for all peers
+thrum peer pending [--all]                     # List phone pairings waiting for your approval
+thrum peer pending approve <id>                # Approve a held phone pairing
+thrum peer pending deny <id> [--reason TEXT]   # Deny it and end the pairing
 ```
 
 `peer join` accepts the peercode (format: `name:ip:port:code`) via four input
 methods (tried in order): positional argument, `--peercode` flag, stdin pipe,
 interactive prompt.
+
+A phone that scans the pairing QR is held until you decide: it is not paired and
+has no credential until you approve it. `peer pending` lists the held pairings
+(`pp_...` id, device name, time left, the first 12 characters of the phone's root
+fingerprint); compare the fingerprint with the phone's before you approve. A held
+pairing expires with its pairing code; `--all` also lists approved, denied and
+expired ones, which are kept.
+
+A phone that misses the 2-minute window after you approve stays paired but cannot
+collect its credential: remove it (`thrum peer remove`) and pair again. A phone
+whose first response was lost cannot retry while its pairing is pending: deny it
+and let the phone start again.
 
 Flags:
 
@@ -873,8 +892,9 @@ thrum worktree create <name> --detach [--base <ref>]  # Detached HEAD worktree a
 thrum worktree create <name> \
   --name <agent> --role <role> --module <mod>  # Create worktree + register agent
 thrum worktree setup <name>                    # Alias for worktree create
-thrum worktree teardown <name|path>                   # Retire agent + remove worktree (salvage first), keep branch (does NOT delete the agent; reap with `thrum agent delete` after)
+thrum worktree teardown <name|path>                   # Retire agent + remove worktree (salvage first), keep branch; refuses a live worktree (does NOT delete the agent; reap with `thrum agent delete` after)
 thrum worktree teardown <name|path> --delete-branch  # Also delete the worktree's branch
+thrum worktree teardown <name|path> --even-if-live      # Override the live-worktree refusal (kill the tmux session first: `thrum tmux kill <session>`)
 thrum worktree list                                  # List worktrees with agent info
 ```
 
@@ -896,9 +916,19 @@ thrum worktree list                                  # List worktrees with agent
 ```text
 --delete-branch       Delete the worktree's branch after removing the worktree
                       (branch stays by default)
+--even-if-live        Proceed despite liveness (teardown's best-effort tmux kill
+                      then ends a live agent). Without it, teardown refuses a
+                      worktree with a process (cwd or argv inside), a live
+                      tmux pane in any socket in the default tmux socket
+                      directory, or a live agent-scratchpad owner, and refuses
+                      when liveness cannot be determined.
 --force-unsafe        Override the identity-hijack guard (may remove the main repo
                       or another live agent's worktree; verify the target first)
+                      (does not bypass the live check)
 ```
+
+Teardown refuses a worktree that is in use. Stop the agent first
+(`thrum tmux kill <session>`), then run teardown.
 
 A `<name>` must match a registered worktree under the worktree root; a `<path>`
 (contains `/`) names any registered git worktree of this repo.

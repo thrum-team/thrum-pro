@@ -63,8 +63,13 @@ search comes back empty and the agent may live elsewhere, find its box and coord
 
 `thrum team --all --json`
 
-In the `team.members` list each member has `agent_id`, `hostname`, `role` and `is_local`. Find the agent's
-`hostname`; the coordinators of that box are the members with the same `hostname` and `role` of `coordinator`.
+In the `team.members` list each member has `agent_id`, `hostname`, `role` and `is_local`, and may have `name`.
+Match the agent in this order: a full ID (`name@daemon`) matches only the member whose `agent_id` equals it; a
+bare name means the agent on this daemon first (a member with `is_local` true or an `agent_id` without `@`,
+matched on `name`, or on `agent_id` up to any `@` when `name` is absent), else the single member of that name on
+another daemon; if several other daemons have that name, say it is ambiguous and list their `agent_id`s. When you
+name a member to address, use its `agent_id`. Find the agent's `hostname`; the coordinators of that box are the
+members with the same `hostname` and `role` of `coordinator`.
 Begin your ANSWER with
 `NOT ON THIS BOX: <agent> is on <hostname>; ask <coordinator agent_id> to search its history` and add the
 question to send. A box can list several coordinators (some offline); name the live one (`status` or `phase`

@@ -227,7 +227,7 @@ a monotonic budget across diffs.
 existing anti-pattern (not just fixing one instance of it), the acceptance
 criteria MUST include a mechanical ratchet lens (see
 `coordinator-hotpath-merge-gate` § "Invariant-ratchet lenses") wired into
-`.thrum/hotpath-gate.json` as `always_run` before the epic is considered
+`.thrum/policy/hotpath-gate.json` as `always_run` before the epic is considered
 closeable — not as a follow-up. A judgment-only acceptance ("reviewer
 confirms the count went down") is insufficient; the count must be enforced
 by a standing mechanical budget the gate itself checks on every subsequent

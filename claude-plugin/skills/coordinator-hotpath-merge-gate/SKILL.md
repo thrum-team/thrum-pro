@@ -5,6 +5,54 @@ description: "Use when a hot-path merge gate is dispatched to you or you are its
 
 # Coordinator: Hot-Path Merge Gate
 
+## Missing policy files
+
+This skill reads these policy files, which other skills write:
+
+| File | Written by | Step that stops |
+|---|---|---|
+| `.thrum/policy/hotpath-gate.json` | `onboarding-gates` | reading the trigger directories and the lenses |
+| `.thrum/policy/gates.json` | `onboarding-gates` | the never-monolithic check and the verdict-log line |
+| `.thrum/policy/philosophy.md` | `project-philosophy` | the general anti-patterns the lenses cross-reference |
+
+A key this skill gives a default for, such as `verdict_log`, is not a miss.
+
+<!-- onboarding:alert -->
+**Missing policy.** Do this before you read a policy file, and again whenever a step needs a key from one.
+
+1. Check that the file exists and has the key you need. A file that exists but lacks the key is a miss. A file whose
+   writing section `.thrum/policy/onboarding.json` records as `undone` is a miss although the file is kept.
+2. On a miss, when the owner is present, first say this, with `<part>` the part that writes the file, in plain words:
+
+   <!-- markdownlint-disable MD013 -->
+   > Say: I can't do this step yet: <file> is missing because the <part> has not been set up. Run <skill> to add it.
+   <!-- markdownlint-enable MD013 -->
+
+   Then print `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (written by <skill>); run <skill>`. `<skill>` is
+   the name of the skill that writes the file (for example `onboarding-gates`), never a section label. Leave out
+   `[key <k>]` when the whole file is missing.
+3. Message the coordinator with that line, unless you are the coordinator.
+4. Stop the step that needs the file. Never continue with defaults.
+   Never take the value from another record instead: `onboarding.json`'s `answers`, an earlier verdict, or what you
+   remember of the file. Those record what was decided; only the file is the setting.
+5. If `.thrum/policy/onboarding.json` records the section that writes the file as `skipped`, word the notice by its
+   `reason`. It still stops:
+   - `owner`: `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (owner-declined); run <skill> to add it`
+   - `profile`: `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (skipped for the Solo profile; run <skill> to add it)`
+
+   A section recorded `undone` gets the plain wording from step 2.
+6. Check `reported` in `.thrum/policy/onboarding.json` first, and send a given signature once: `missing:<file>` or
+   `missing:<file>:<k>`, or `skipped:<skill>:<reason>` when step 5 applies. After you send it, add it to `reported`. If
+   `onboarding.json` does not exist, treat `reported` as empty and no section as skipped.
+<!-- /onboarding:alert -->
+
+## Lens tier — check first
+
+Read `tiers.hotpath_lens` in `.thrum/policy/gates.json` before you read `hotpath-gate.json`. When it is `false`, print
+`hotpath lens is off in .thrum/policy/gates.json; run onboarding-gates to turn it on` and stop, without the ONBOARDING
+MISSING line. When `ratchets[]` is non-empty, still run those entries (the `ratchets[]` section below) and nothing else.
+A missing `tiers` key is a miss: run the alert above, naming `onboarding-gates`.
+
 ## Before you start this gate — queue it, take it in order
 
 - **Queue every gate request on arrival** with `thrum queue add --title "gate <branch>@<short sha>"`, and reply to
@@ -44,8 +92,6 @@ a clean seam. That is an explicit decision, stated at the time. It is never drif
 **Measure by pane, in the same command block that reports the number.** A figure carried
 forward from earlier in the session is a memory, not a measurement.
 
-
-
 ## Why this is a separate pass, not a philosophy-gate lens
 
 `coordinator-philosophy-merge-gate` catches general structural anti-patterns
@@ -66,7 +112,7 @@ numbered list.
 
 ## Config-driven design
 
-This skill reads `.thrum/hotpath-gate.json` at invocation time. The config
+This skill reads `.thrum/policy/hotpath-gate.json` at invocation time. The config
 provides:
 
 - **Trigger directories** — which directories in the diff activate this gate
@@ -79,8 +125,7 @@ provides:
 The lenses below are codebase-agnostic. All project-specific values come from
 the config. The companion `project-hotpath-gate` skill generates/updates the
 config from codebase inspection (like `project-philosophy` generates
-`.thrum/philosophy.md`). If no config exists, fail with guidance to run
-`project-hotpath-gate` first.
+`.thrum/policy/philosophy.md`). If no config exists, follow the missing-policy block under "Missing policy files" and stop.
 
 **How to apply: DISPATCH THIS GATE TO THE GATE RUNNER. Do not walk the lenses in
 your own context.**
@@ -88,7 +133,7 @@ your own context.**
 The gate runner is a standing agent whose entire purpose is to hold gate work
 OUTSIDE the coordinator's context — resolve the current one from `thrum team` by
 its `gate` ROLE, never by a remembered name. It runs the lenses in an ephemeral worktree, produces
-a verdict, and tears the worktree down. **You read `.thrum/hotpath-gate.json` to
+a verdict, and tears the worktree down. **You read `.thrum/policy/hotpath-gate.json` to
 build the dispatch, then you consolidate the verdict and decide. You do not run
 the lenses.**
 
@@ -101,7 +146,7 @@ explicitly in the merge record so the gap is visible rather than invisible.
 
 **Verdicts are one log line:** the runner appends ONE line (date, gate, candidate SHA,
 target SHA, verdict, one short reason) to the verdict log and commits it. The log path is `verdict_log` in
-`.thrum/gate-config.json` (resolved through `.thrum/redirect` from a worktree),
+`.thrum/policy/gates.json` (resolved through `.thrum/redirect` from a worktree),
 default `docs/gate-log.md` when the key is absent. That
 line is the only record a gate keeps; the verdict itself travels in the report message.
 Never commit per-gate report directories, logs, archives or evidence (owner ruling 2026-10-17:
@@ -134,9 +179,11 @@ rediscovering these the hard way:
    concurrency change. Never run a full-package race per landing: the full
    race runs on trunk in batches before any deploy, which is what catches
    cross-test races. A focused `--run` race on a package item 7 marks as too slow is not
-   a monolithic run (item 7 is about the unfiltered package).
+   a monolithic run (item 7 is about the unfiltered package). Which of these applies comes from `per_landing_race` in
+   `.thrum/policy/gates.json`, and the batch race interval is `batch.every_n_landings` there (`0` means no batch race;
+   thrum's own value is 5). A missing file or key is a miss: run the alert.
 7. **A package your project marks as too slow to run monolithically is never run monolithically at gate time, in
-   either lane.** If `.thrum/gate-config.json` or `.thrum/hotpath-gate.json` names a sharded runner or a timeout
+   either lane.** If `.thrum/policy/gates.json` or `.thrum/policy/hotpath-gate.json` names a sharded runner or a timeout
    classifier for such a package, the gate's OUTPUT must show that runner actually executed for it, not just that some
    test in it ran. A bound-timeout with ZERO test failures is a FALSE RED, not a finding: distinguish it from a
    genuine hang or deadlock with the project's timeout classifier before reporting it as a regression, and send an
@@ -195,7 +242,7 @@ every diff regardless of trigger directories. If the config has no
 ## Invariant-ratchet lenses
 
 A lens may declare `mandatory_test_command` (see `census_classification_coverage`
-and `write_owner_bypass_ratchet` in `.thrum/hotpath-gate.json`) instead of
+and `write_owner_bypass_ratchet` in `.thrum/policy/hotpath-gate.json`) instead of
 (or alongside) a pattern-match `question`/`required_evidence` pair. When
 present, PASS/FAIL is the command's own exit code — never a judgment call
 from reading the diff. This is the shape for any invariant that already has
@@ -206,6 +253,17 @@ in the same change that appears to narrow it. `write_owner_bypass_ratchet`
 is the reference instance: it fails a merge that bumps a
 ceiling/aggregate in the ledger file without a `RATCHET-WAIVER:` tag, even
 when the ledger-equality test alone would pass.
+
+**`ratchets[]` entries.** Run every `ratchets[]` entry of `.thrum/policy/gates.json` as an `always_run` lens, on the
+merged tree, whether onboarding wrote it or the repository brought it in (a missing file or key is a miss: run the alert
+above). The lenses above keep their own waiver rule (a raised ceiling needs the tag). This rule is separate and fails on
+any change:
+
+1. Run `detector_cmd` from the repository root. PASS or FAIL is its own exit code.
+2. If `git diff --name-only <base>..<head> -- <baseline_file>` prints anything, and no message in
+   `git log --format=%B <base>..<head>` contains `waiver_tag`, the lens FAILS. `<base>` is the merge base with the
+   merge target and `<head>` is the candidate tip. Any change counts, including a lower ceiling.
+3. The verdict records both results, as the `write_owner_bypass_ratchet` lens does.
 
 ## Delta re-gate continuity — walk the whole branch, read the whole function
 
@@ -263,8 +321,8 @@ before blocking extraction, (3) consider `native_alternatives`. Read the
 
 ## Lens 2 — Dispatch-goroutine-blocking on expensive work
 
-**Why:** Blocking the request-dispatch goroutine on expensive I/O starves other
-requests. A shared lock held across I/O is the overarching contention point.
+**Why:** Blocking the request, message or job handler on expensive I/O starves other
+work. A shared lock held across I/O is the overarching contention point.
 
 **Relationship to philosophy gate:** Cross-refs Philosophy Lens 10d (cost gate:
 shared lock across I/O or drain) — goes deeper by checking
@@ -425,7 +483,7 @@ enumerate all write sites; diff against what the fix touched.
 
 **Why:** A per-row-expensive hot-path loop (subprocess / DB / IO per candidate)
 that admits dead/retired/non-live rows into the candidate set. Dead rows incur
-the full per-row cost (which fails anyway), starving the dispatch goroutine.
+the full per-row cost (which fails anyway), starving the request, message or job handler.
 This was the ACTUAL root cause of the gitctx cold-cache fork-storm.
 
 **Relationship to philosophy gate:** No philosophy.md equivalent — new pattern.
@@ -450,7 +508,7 @@ predicate, feeding a per-row-expensive loop — **BLOCKING**.
 
 **Why:** A synchronous peer/network call (peer dial, cross-daemon RPC,
 wait_pairing) reachable from a dispatch/fanout handler with no deadline AND no
-circuit-breaker stalls the dispatch goroutine when the peer is unreachable or
+circuit-breaker stalls the request, message or job handler when the peer is unreachable or
 stale.
 
 **Relationship to philosophy gate:** No philosophy.md equivalent — new pattern.
@@ -481,13 +539,12 @@ For a per-landing gate, a FULL RUN fallback means the full NON-race lane, never 
 
 ## Lens 11 — Census classification coverage (mandatory test, not a pattern check)
 
-**Why:** `go test ./...` never runs in the merge gates — test impact selection
-(the plan wrapper) is scoped to files the diff touches, and `internal/daemon/rpc/testcensus` is an ad
-hoc test target nothing routes to. A merge that adds a `state.NewState(...)`
-call site in an `internal/daemon/rpc/*_test.go` file (test-fixture setup, not a
-handler) can leave it unclassified and desync the frozen census snapshot with
-no gate catching it — trunk went RED post-merge on 573mo v87 for exactly this
-reason.
+**Why:** A mandatory-test lens is a check the project cannot trust a reviewer to
+do by reading: a named test that must pass before merge. The gates do not run
+the whole test suite, so a change can desync something only that test guards
+and no gate catches it. This repository's own instance of the lens, and the
+incident behind it, are written up in the project's test-census README under
+"Why the hotpath gate runs this test".
 
 **Relationship to Lenses 1–10:** every other lens in this file is an
 LLM-judgment pattern check — grep a pattern, read the surrounding code, apply
@@ -496,55 +553,32 @@ its evidentiary discipline with the philosophy gate's coincidence-detector-tests
 lens and preamble rule 3 (RUN any test you make a claim about) rather than with
 Lenses 1–10's pattern-matching shape.
 
-**Own narrower trigger — this lens does NOT fire on every gate run.**
-`internal/daemon/` is already a gate-wide `trigger_directories` entry, so this
-gate already RUNS on any `internal/daemon/rpc/` diff. This lens carries its OWN
-trigger on top of that (see `config.lenses.census_classification_coverage` and
-`lens_scope_semantics`): it fires only when the diff (against merge-base,
-preamble rule 4) either (a) touches `internal/daemon/rpc/testcensus/**`
-directly, or (b) touches an `internal/daemon/rpc/*_test.go` file AND an
-added/changed line matches `trigger_content_pattern` (bare `NewState(`,
-alias-agnostic on purpose — a renamed import of the state package would defeat
-a `state.`-prefixed match, and over-firing here costs one fast test run while
-under-firing reproduces the exact hole this lens exists to close). A diff
-elsewhere under `internal/daemon/` (state/, safedb/, scheduler/, or an
-`rpc/*_test.go` edit that never touches a `NewState(` call) fires the GATE but
-not THIS lens — record it walked-and-N/A. A non-test `.go` change in
-`internal/daemon/rpc/` alone (e.g. a handler edit with no test change) does not
-fire this lens either: `census.go`'s `Run()` only scans `*_test.go` source
-non-recursively, so a handler-only edit cannot desync the census by
-construction.
+**Own narrower trigger — this lens does NOT fire on every gate run.** It
+carries its OWN trigger on top of the gate-wide `trigger_directories` (see
+`config.lenses.census_classification_coverage` and `lens_scope_semantics`): it
+fires only when the diff (against merge-base, preamble rule 4) touches a path
+matching the entry's `trigger_paths`, and, for a path the entry scopes by
+content, an added or changed line also matches the entry's
+`trigger_content_pattern`. A diff that fires the GATE but not THIS lens is
+recorded walked-and-N/A. The entry's `scope_note` says exactly where the
+trigger stops.
 
 **How to apply:** Read `config.lenses.census_classification_coverage`. Check
-the trigger per the paragraph above. If it fires, run
-`config.lenses.census_classification_coverage.mandatory_test_command` in the
-gate's throwaway worktree (preamble rule 2) and record the literal output.
-
-**Gates `TestCensusClassificationCoverage` ONLY — deliberately NOT the whole
-package.** `mandatory_test_command` is `-run`-scoped to
-`^TestCensusClassificationCoverage$`. The sibling test in the same package,
-`TestCensusRegeneration`, is an orthogonal count-snapshot drift detector — it
-reds on ANY new top-level test function added anywhere in
-`internal/daemon/rpc`, unrelated to whether any `NewState` site is classified.
-Gating the whole package would false-block the next unrelated census-surface
-diff on `TestCensusRegeneration`'s brittleness with zero added
-defect-prevention (`ClassificationCoverage` alone already catches the defect
-this lens exists for). `TestCensusRegeneration`'s own staleness is tracked
-separately (nd2j1/P1 owns the classification data; the brittle count-snapshot
-assertion itself is a distinct open question — "make advisory or drop the
-raw-count assertion"), not by this lens.
+the trigger as above. If it fires, run the entry's `mandatory_test_command` in
+the gate's throwaway worktree (preamble rule 2) and record the literal output.
+Run exactly that command and no wider one: the entry scopes it on purpose, and
+its `scope_note` says why.
 
 **Severity:** Trigger fires and `mandatory_test_command` was not run before
-merge, OR was run and is RED — **BLOCKING**. A RED result means an unclassified
-`NewState` site: confirm `testdata/classifications.json` was regenerated per
-`internal/daemon/rpc/testcensus/README.md` and re-committed on the same branch
-before merge.
+merge, OR was run and is RED — **BLOCKING**. A RED result means the branch
+has not done what the entry's `scope_note` and `question` name as the fix:
+confirm that fix is committed on the same branch before merge.
 
 **Triage:**
 ```bash
-git diff <merge-base>...<tip> --name-only | grep -E 'internal/daemon/rpc/testcensus/|internal/daemon/rpc/.*_test\.go$'
-# for any *_test.go hit outside testcensus/, confirm content match:
-git diff <merge-base>...<tip> -- <file> | grep -E '^\+.*NewState\('
+git diff <merge-base>...<tip> --name-only
+# match the names against the entry's trigger_paths; for a hit the entry scopes by content:
+git diff <merge-base>...<tip> -- <file> | grep -E "^\+.*<trigger_content_pattern>"
 ```
 
 ## Cross-gate consolidation with the philosophy gate
@@ -596,8 +630,10 @@ diff — don't bounce reflexively.
 
 ## Unmeasured findings
 
-A gate finding with no failing test or reproduction can never block. Label it UNMEASURED, state the
-likely cost, and name the test that would prove it. The coordinator forwards it only if the fix is
+A gate finding with no failing test or reproduction: Label it UNMEASURED, state the
+likely cost, and name the test that would prove it. It blocks only when `policy.unmeasured_findings_block` in
+`.thrum/policy/gates.json` is `true`; thrum's own value is `false`, so it never blocks. A missing file or key is a miss:
+run the alert. The coordinator forwards it only if the fix is
 clearly worth the cost, never as a 'real risk', and the owner can decline it.
 
 ## Post-verdict record
@@ -607,7 +643,7 @@ deleted after the verdict).
 
 ## Reference
 
-- `.thrum/hotpath-gate.json` — project-specific config (trigger directories,
+- `.thrum/policy/hotpath-gate.json` — project-specific config (trigger directories,
   patterns, reference functions, incident prose)
 - `project-hotpath-gate` — the companion builder skill that generates/reconciles
   the config (analog of `project-philosophy`)
@@ -615,9 +651,9 @@ deleted after the verdict).
   gap analysis, lens details, decisions)
 - `coordinator-philosophy-merge-gate` — the companion general-structural gate
   (runs in parallel)
-- `.thrum/philosophy.md` — canonical source for general anti-patterns (cross-
+- `.thrum/policy/philosophy.md` — canonical source for general anti-patterns (cross-
   referenced by Lenses 1–2, 6–7 where they overlap)
-- the verdict log (`verdict_log` in `.thrum/gate-config.json`) — the one-line-per-verdict gate log
+- the verdict log (`verdict_log` in `.thrum/policy/gates.json`) — the one-line-per-verdict gate log
 
 <!-- THRUM-GATE: stage=skill next=review -->
 <!-- THRUM-REVIEW: stage=skill verdict=Ready:Yes cycle=2 -->

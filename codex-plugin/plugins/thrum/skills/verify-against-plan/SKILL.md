@@ -180,7 +180,7 @@ clear error — do not proceed with partial inputs.
 
 6. **Primitive Ledger row present and valid.** If the diff adds I/O or SQL under
    a hot root (`Handle*`/tick/sweeper/`SyncApplier`/boot — see
-   `.thrum/hotpath-gate.json`'s
+   `.thrum/policy/hotpath-gate.json`'s
    `lenses.existing_primitive_bypass.hot_root_indicators`), confirm the
    implementer's report includes a ledger row (raw op -> callee package searched
    -> primitive adopted, or none exists + bounded cost formula at production

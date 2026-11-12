@@ -132,6 +132,10 @@ different.
 
 SSH is a fallback for typing into a pane, never the first route.
 
+`thrum tmux send --keys` prints a receipt naming the executing daemon and pane.
+Exit 5 means the pane did not change; the keys were sent, so re-capture and
+judge rather than resending or escalating to SSH.
+
 ### Free installs
 
 State, queue and dashboard writes are Pro. On a Free install such a write is

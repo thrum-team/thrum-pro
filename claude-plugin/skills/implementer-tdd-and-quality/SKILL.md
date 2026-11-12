@@ -17,7 +17,7 @@ quality-gate practice.
 can pass a plain test run and still fail under the language's race or concurrency
 checker, sometimes with silent data corruption that takes hours to track down later.
 
-**How to apply:** Read `.thrum/gate-config.json` (the `per_landing` entries of kind `race`,
+**How to apply:** Read `.thrum/policy/gates.json` (the `per_landing` entries of kind `race`,
 or the commands your project documents) and run the race or concurrency check it names
 on the packages you touched. Never report tests passing without having run it, when your
 project has one. If your project has none, say so in your report. (Go example:
@@ -34,7 +34,7 @@ the full tree gets one final run before reporting done.
 packages with a test selector (Go example:
 `go test -race ./internal/<pkg>/... -run <TestName>`). Once the scoped tests pass
 and you're ready to report done, run the whole-lane test command from
-`.thrum/gate-config.json` (`per_landing`, or `full_fallback` when selection cannot run) once
+`.thrum/policy/gates.json` (`per_landing`, or `full_fallback` when selection cannot run) once
 to confirm nothing else broke.
 
 ## Use `t.TempDir()` for filesystem fixtures — never hardcoded paths
@@ -60,7 +60,7 @@ arguments. Code that fails the checks gets caught in CI or by review; running th
 locally catches it pre-commit when the fix is one line.
 
 **How to apply:** Before reporting done, run the lint and static-check commands from
-`.thrum/gate-config.json` (`per_landing` kinds `lint`, plus `structural_checks`), or the
+`.thrum/policy/gates.json` (`per_landing` kinds `lint`, plus `structural_checks`), or the
 commands your project documents. All should pass clean. Run a check in its read-only
 form, never a fix mode that rewrites tracked files (the `write_capable_targets` there).
 If a finding looks like a false positive, prefer a small annotation or refactor to
@@ -84,7 +84,7 @@ that would otherwise come back as findings.
    use `safecmd`, swallowed errors, missing `slog` calls on recoverable
    failures.
 3. **Primitive ledger pass.** If this diff adds I/O or SQL under a hot root
-   (`Handle*`/tick/sweeper/`SyncApplier`/boot — see `.thrum/hotpath-gate.json`'s
+   (`Handle*`/tick/sweeper/`SyncApplier`/boot — see `.thrum/policy/hotpath-gate.json`'s
    `lenses.existing_primitive_bypass.hot_root_indicators`), confirm you have a ledger row: raw op -> callee
    package searched -> primitive adopted, or none exists + bounded cost formula
    (frequency x production cardinality, at production scale). Include it in

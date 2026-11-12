@@ -188,20 +188,158 @@ print(json.dumps({
 ' "$raw" 2>/dev/null
 }
 
+# read_own_daemon_id — THIS daemon's own ID, from `thrum whoami --json` .daemon_id. Read ONCE per script run (the
+# flag keeps every later caller from asking again; main() calls it before the first cycle, so the command
+# substitutions that call roster_member inherit the cached value). A daemon whose whoami has no daemon_id is
+# old-form: OWN_DAEMON_ID stays empty, no row is qualified and every row is local.
+OWN_DAEMON_ID=""
+OWN_DAEMON_ID_READ=0
+read_own_daemon_id() {
+  [ "$OWN_DAEMON_ID_READ" = 0 ] || return 0
+  OWN_DAEMON_ID_READ=1
+  OWN_DAEMON_ID="$(thrum whoami --json </dev/null 2>/dev/null | python3 -c '
+import json, sys
+try:
+    v = json.load(sys.stdin).get("daemon_id")
+except Exception:
+    v = None
+print(v if isinstance(v, str) else "")
+' 2>/dev/null)" || OWN_DAEMON_ID=""
+}
+
+# roster_member <rows-kind> <entry> [field...] — the ONE place a roster entry or agent argument is matched
+# against rows (team rows: .team.members[]; sessions rows: `thrum tmux status` .sessions[]). Rows come on stdin
+# (use `< <(...)`, not a pipe, so the result survives in this shell). Order:
+#   1. An entry with "@" is a full ID: it matches the row whose agent_id (sessions: .agent) equals it, nothing
+#      else. A local row whose id has no "@" counts as <id>@<this daemon> when this daemon's ID is known.
+#   2. A bare entry means THIS daemon's agent first, matched on the row's name (.name when non-empty, else the
+#      id up to "@"). A team row that carries a boolean is_local is local exactly when it says so; without one
+#      it is local when its agent_id has no "@" or its daemon half is this daemon. Sessions rows (this daemon's tmux sessions) are local unless they name another daemon: agent
+#      has no "@", or its daemon half is this daemon, or origin_daemon is empty or this daemon. A bare row `a`
+#      and a row `a@<this daemon>` are ONE agent.
+#   3. No local match: exactly one other row with that name is the member (remote). Several distinct IDs do not
+#      pick: stderr gets "ambiguous roster entry 'X': candidates a b" and the entry is treated as unmatched.
+# Sets RM_STATUS (match|none|ambiguous) and RM_F[] (one value per requested field, in order; "@bare" is the
+# matched row's bare name, "@id" its agent ID as this daemon qualifies it, "@local" whether the row is local by
+# rule 2; booleans are true/false, a missing value is empty).
+RM_STATUS=none
+RM_F=()
+# Roster entries roster_self_check found ambiguous this run; run_capture_cycle skips them.
+ROSTER_AMBIGUOUS=()
+# Rows already reported by the is_local-false-but-names-this-daemon line (|id| items), so each prints once per run.
+ROSTER_WARNED=""
+roster_member() {
+  local kind="$1" entry="$2" v warned w
+  shift 2
+  read_own_daemon_id
+  RM_STATUS=none
+  RM_F=()
+  {
+    IFS= read -r -d '' RM_STATUS || RM_STATUS=none
+    IFS= read -r -d '' warned || warned=""
+    while IFS= read -r -d '' v; do RM_F+=("$v"); done
+  } < <(python3 -c '
+import json, sys
+kind, entry, own, fields = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4:]
+warned = []
+def out(status, row=None):
+    vals = [status, "\n".join(warned)]
+    if row is not None:
+        for f in fields:
+            if f == "@bare":
+                v = bare(row)
+            elif f == "@id":
+                v = nid(row)
+            elif f == "@local":
+                v = is_local(row)
+            else:
+                v = row.get(f)
+            vals.append("" if v is None else str(v).lower() if isinstance(v, bool) else str(v))
+    sys.stdout.write("".join(x.replace("\0", "") + "\0" for x in vals))
+    sys.exit(0)
+try:
+    d = json.load(sys.stdin)
+    rows = (d.get("team") or {}).get("members") if kind == "team" else d.get("sessions")
+    if not isinstance(rows, list):
+        out("none")
+    rows = [r for r in rows if isinstance(r, dict)]
+except Exception:
+    out("none")
+key = "agent_id" if kind == "team" else "agent"
+def rid(r):
+    v = r.get(key)
+    return v if isinstance(v, str) else ""
+def bare(r):
+    n = r.get("name") if kind == "team" else None
+    return n if isinstance(n, str) and n else rid(r).split("@")[0]
+def nid(r):
+    i = rid(r)
+    return i if "@" in i or not own or not is_local(r) else i + "@" + own
+def is_local(r):
+    i = rid(r)
+    if kind == "team":
+        v = r.get("is_local")
+        if isinstance(v, bool):
+            return v
+        return "@" not in i or bool(own and i.split("@", 1)[1] == own)
+    if "@" not in i or (own and i.split("@", 1)[1] == own):
+        return True
+    od = r.get("origin_daemon") or ""
+    return od == "" or od == own
+if kind == "team" and own:
+    warned = [rid(r) for r in rows if r.get("is_local") is False and rid(r).endswith("@" + own)]
+if "@" in entry:
+    for r in rows:
+        if rid(r) == entry or nid(r) == entry:
+            out("match", r)
+    out("none")
+cands = [r for r in rows if bare(r) == entry]
+for group in ([r for r in cands if is_local(r)], [r for r in cands if not is_local(r)]):
+    ids = sorted({nid(r) for r in group})
+    if len(ids) == 1:
+        out("match", next(r for r in sorted(group, key=lambda r: "@" not in rid(r)) if nid(r) == ids[0]))
+    if len(ids) > 1:
+        sys.stderr.write("ambiguous roster entry %r: candidates %s\n" % (entry, " ".join(ids)))
+        out("ambiguous")
+out("none")
+' "$kind" "$entry" "$OWN_DAEMON_ID" "$@")
+  # A team row whose is_local is false but whose id names this daemon: the flag wins (the row is not local). One
+  # stderr line per row per run, whichever call site reads it first.
+  while IFS= read -r w; do
+    [ -n "$w" ] || continue
+    case "$ROSTER_WARNED" in
+      *"|$w|"*) ;;
+      *)
+        ROSTER_WARNED="$ROSTER_WARNED|$w|"
+        printf "team row '%s' has is_local false but names this daemon\n" "$w" >&2
+        ;;
+    esac
+  done <<<"$warned"
+}
+
+# team_rows_for <entry> — sets TEAM_ROWS to `thrum team @<entry> --offline --json`, read once per entry per capture
+# cycle (run_capture_cycle empties the cache first). Call it in this shell, not in a command substitution, so the
+# cache survives.
+TEAM_ROWS=""
+TEAM_CACHE_KEYS=()
+TEAM_CACHE_ROWS=()
+team_rows_for() {
+  local i n=${#TEAM_CACHE_KEYS[@]}
+  for ((i = 0; i < n; i++)); do
+    if [ "${TEAM_CACHE_KEYS[$i]}" = "$1" ]; then
+      TEAM_ROWS="${TEAM_CACHE_ROWS[$i]}"
+      return 0
+    fi
+  done
+  TEAM_ROWS="$(thrum team "@$1" --offline --json 2>/dev/null)" || true
+  TEAM_CACHE_KEYS[$n]="$1"
+  TEAM_CACHE_ROWS[$n]="$TEAM_ROWS"
+}
+
 agent_is_local() {
   local agent="$1"
-  thrum team "@$agent" --offline --json 2>/dev/null | python3 -c '
-import json, sys
-agent=sys.argv[1]
-try:
-    data=json.load(sys.stdin)
-except Exception:
-    sys.exit(1)
-for member in data.get("team", {}).get("members", []):
-    if member.get("agent_id") == agent:
-        sys.exit(0 if member.get("is_local") is True else 1)
-sys.exit(1)
-' "$agent" 2>/dev/null
+  roster_member team "$agent" @local < <(thrum team "@$agent" --offline --json 2>/dev/null)
+  [ "$RM_STATUS" = match ] && [ "${RM_F[0]-}" = true ]
 }
 
 record_archive_degraded() {
@@ -441,19 +579,11 @@ PY
 resolve_session() {
   local agent="$1"
   local session
-  session=$(thrum tmux status --json 2>/dev/null | python3 -c "
-import json, sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    sys.exit(1)
-for s in d.get('sessions', []):
-    if s.get('agent') == '$agent':
-        print(s.get('name', ''))
-        break
-" 2>/dev/null)
+  roster_member sessions "$agent" name < <(thrum tmux status --json 2>/dev/null)
+  session=""
+  [ "$RM_STATUS" = match ] && session="${RM_F[0]-}"
   if [ -z "$session" ]; then
-    session="$agent"
+    session="${agent%%@*}"
   fi
   printf '%s' "$session"
 }
@@ -493,68 +623,57 @@ quote_shell() {
   python3 -c 'import shlex,sys; print(shlex.quote(sys.argv[1]))' "$1"
 }
 
+# resolve_capture_target <agent> — sets CT_HOST, CT_AGENT_SESSION, CT_WORKTREE_SESSION and CT_TMUX_SESSION from the
+# matched row, each read as its own value (never joined into one string and split again, so a hostname with a "|"
+# cannot shift the fields). Returns 1, with those empty or partly set, when there is nothing to route to.
+CT_HOST=""
+CT_AGENT_SESSION=""
+CT_WORKTREE_SESSION=""
+CT_TMUX_SESSION=""
 resolve_capture_target() {
-  local agent="$1" team_json host worktree tmux_session
+  local agent="$1" team_json worktree bare_name
+  CT_HOST=""
+  CT_AGENT_SESSION=""
+  CT_WORKTREE_SESSION=""
+  CT_TMUX_SESSION=""
   # Scoped member read: this fallback runs per failed pane, so `team
   # --all` would repeatedly pull the entire fleet and fan out under an
   # outage. The scoped form carries the same member fields we need below.
   if ! team_json="$(thrum team "@$agent" --offline --json 2>/dev/null)"; then
     return 1
   fi
-  host="$(printf '%s' "$team_json" | python3 -c '
-import json,sys
-agent=sys.argv[1]
-data=json.load(sys.stdin)
-for member in data.get("team", {}).get("members", []):
-    if member.get("agent_id") == agent:
-        print(member.get("hostname") or "")
-        break
-' "$agent")"
-  worktree="$(printf '%s' "$team_json" | python3 -c '
-import json,sys
-agent=sys.argv[1]
-data=json.load(sys.stdin)
-for member in data.get("team", {}).get("members", []):
-    if member.get("agent_id") == agent:
-        print(member.get("worktree") or "")
-        break
-' "$agent")"
-  tmux_session="$(printf '%s' "$team_json" | python3 -c '
-import json,sys
-agent=sys.argv[1]
-data=json.load(sys.stdin)
-for member in data.get("team", {}).get("members", []):
-    if member.get("agent_id") == agent:
-        print(member.get("tmux_session") or "")
-        break
-' "$agent")"
-  if [ -z "$host" ]; then
+  roster_member team "$agent" hostname worktree tmux_session @bare < <(printf '%s' "$team_json")
+  [ "$RM_STATUS" != ambiguous ] || return 1
+  CT_HOST="${RM_F[0]-}"
+  worktree="${RM_F[1]-}"
+  CT_TMUX_SESSION="${RM_F[2]-}"
+  bare_name="${RM_F[3]-}"
+  if [ -z "$CT_HOST" ]; then
     printf 'capture route unavailable for %s: team hostname missing\n' "$agent" >&2
     return 1
   fi
   [ -n "$agent" ] || return 1
   # Preserve the declared tmux session. Agent/worktree guesses are only
-  # compatibility candidates when the scoped member has no session name.
-  printf '%s|%s|%s|%s\n' "$host" "$agent" "${worktree##*/}" "$tmux_session"
+  # compatibility candidates when the scoped member has no session name; they
+  # use the matched row's bare name (a local artifact never carries "@").
+  CT_AGENT_SESSION="${bare_name:-${agent%%@*}}"
+  CT_WORKTREE_SESSION="${worktree##*/}"
 }
 
 ssh_capture_pane() {
   local agent="$1" declared_host="${2-}" declared_session="${3-}"
   local host agent_session worktree_session worktree_normalized tmux_session
   local agent_quoted worktree_quoted normalized_quoted capture_quoted capture_target remote_cmd
-  local target
   if [ -n "$declared_host" ] || [ -n "$declared_session" ]; then
     [ -n "$declared_host" ] && [ -n "$declared_session" ] || return 1
     host="$declared_host"
     agent_quoted="$(quote_shell "$declared_session")"
     remote_cmd="tmux has-session -t ${agent_quoted} 2>/dev/null || exit 1; tmux capture-pane -p -J -t ${agent_quoted} -S -30"
-    ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 "$host" "$remote_cmd" 2>&1
+    ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 -- "$host" "$remote_cmd" 2>&1
     return $?
   fi
-  if ! target="$(resolve_capture_target "$agent")"; then
-    return 1
-  fi
-  IFS='|' read -r host agent_session worktree_session tmux_session <<< "$target"
+  resolve_capture_target "$agent" || return 1
+  host="$CT_HOST" agent_session="$CT_AGENT_SESSION" worktree_session="$CT_WORKTREE_SESSION" tmux_session="$CT_TMUX_SESSION"
   [ -n "$host" ] && [ -n "$agent_session" ] || return 1
   if [ -n "$tmux_session" ]; then
     agent_quoted="$(quote_shell "=${tmux_session%%:*}")"
@@ -562,7 +681,7 @@ ssh_capture_pane() {
     [[ "$tmux_session" == *:* ]] || capture_target="${capture_target}:"
     capture_quoted="$(quote_shell "$capture_target")"
     remote_cmd="tmux has-session -t ${agent_quoted} 2>/dev/null || exit 1; tmux capture-pane -p -J -t ${capture_quoted} -S -30"
-    ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 "$host" "$remote_cmd" 2>&1
+    ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 -- "$host" "$remote_cmd" 2>&1
     return $?
   fi
   # Worktree basenames can contain dots while tmux launch normalizes them
@@ -573,7 +692,7 @@ ssh_capture_pane() {
   worktree_quoted="$(quote_shell "$worktree_session")"
   normalized_quoted="$(quote_shell "$worktree_normalized")"
   remote_cmd="for session in ${agent_quoted} ${worktree_quoted} ${normalized_quoted}; do if tmux has-session -t \"\$session\" 2>/dev/null; then tmux capture-pane -p -J -t \"\$session\" -S -30; exit \$?; fi; done; exit 1"
-  ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 "$host" "$remote_cmd" 2>&1
+  ssh -n -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=5 -o ServerAliveCountMax=1 -- "$host" "$remote_cmd" 2>&1
 }
 
 # ---------------------------------------------------------------------------
@@ -591,27 +710,18 @@ ssh_capture_pane() {
 # ---------------------------------------------------------------------------
 probe_agent() {
   local a="$1" firstline="$2"
-  local pid="" hostname="" last_seen="" is_local="" session_id="" inbox_total="0" state=""
+  local pid="" hostname="" last_seen="" is_local="" session_id="" inbox_total="0" state="" pid_quoted sess_quoted sess
   # --offline: the online-only read omits offline agents entirely (empty
   # members[]), which false-fails the proof; the offline record carries
   # the same fields plus last-known state.
-  eval "$(thrum team "@$a" --offline --json 2>/dev/null | python3 -c "
-import json,sys
-agent=sys.argv[1]
-try:
-    d=json.load(sys.stdin)
-except: sys.exit(0)
-for m in d.get('team',{}).get('members',[]):
-    if m.get('agent_id')==agent:
-        print(f\"pid={m.get('agent_pid') or 0}\")
-        print(f\"hostname={m.get('hostname') or ''}\")
-        print(f\"last_seen={m.get('last_seen') or ''}\")
-        print(f\"is_local={str(m.get('is_local')).lower()}\")
-        print(f\"state={m.get('state') or ''}\")
-        print(f\"session_id={m.get('session_id') or ''}\")
-        print(f\"inbox_total={m.get('inbox_total') or 0}\")
-        break
-" "$a" 2>/dev/null)"
+  # Row fields come through roster_member (read as values, never evaluated: a value with a space, quote,
+  # $(...) or ; stays data).
+  team_rows_for "$a"
+  roster_member team "$a" agent_pid hostname last_seen is_local state session_id inbox_total < <(printf '%s' "$TEAM_ROWS")
+  if [ "$RM_STATUS" = match ]; then
+    pid="${RM_F[0]:-0}" hostname="${RM_F[1]-}" last_seen="${RM_F[2]-}" is_local="${RM_F[3]-}"
+    state="${RM_F[4]-}" session_id="${RM_F[5]-}" inbox_total="${RM_F[6]:-0}"
+  fi
   local live_pid_verified=0 fresh_msg_verified=0
   # Case 1: independently verified live PID (ps on the owning host, not
   # just team pid != 0).
@@ -619,12 +729,16 @@ for m in d.get('team',{}).get('members',[]):
     if [ "$is_local" = "true" ] || [ "$hostname" = "$(hostname)" ] || [ "$hostname" = "$(hostname).local" ]; then
       if ps -p "$pid" >/dev/null 2>&1; then live_pid_verified=1; fi
     else
-      if ssh -n -o ConnectTimeout=5 -o BatchMode=yes "$hostname" "ps -p $pid >/dev/null 2>&1" 2>/dev/null; then live_pid_verified=1; fi
+      # The pid is row data: quoted for the remote shell, so ps receives it as one argument whatever it holds.
+      pid_quoted="$(quote_shell "$pid")"
+      if ssh -n -o ConnectTimeout=5 -o BatchMode=yes -- "$hostname" "ps -p ${pid_quoted} >/dev/null 2>&1" 2>/dev/null; then live_pid_verified=1; fi
       if [ $live_pid_verified -eq 0 ]; then
-        sess=$(thrum tmux status --json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); [print(s.get('name','')) for s in d.get('sessions',[]) if s.get('agent')==sys.argv[1]]" "$a" 2>/dev/null | head -1)
+        roster_member sessions "$a" name < <(thrum tmux status --json 2>/dev/null)
+        sess=""
+        [ "$RM_STATUS" = match ] && sess="${RM_F[0]-}"
         if [ -n "$sess" ]; then
           sess_quoted="$(quote_shell "$sess")"
-          if ssh -n -o ConnectTimeout=5 -o BatchMode=yes "$hostname" "tmux has-session -t ${sess_quoted} 2>/dev/null" 2>/dev/null; then live_pid_verified=1; fi
+          if ssh -n -o ConnectTimeout=5 -o BatchMode=yes -- "$hostname" "tmux has-session -t ${sess_quoted} 2>/dev/null" 2>/dev/null; then live_pid_verified=1; fi
         fi
       fi
     fi
@@ -674,16 +788,15 @@ roster_self_check() {
   local outdir="$1"; shift
   local roster=("$@")
   local bad="" r
+  ROSTER_AMBIGUOUS=()
   for r in "${roster[@]}"; do
-    if ! thrum team "@$r" --offline --json 2>/dev/null | python3 -c "
-import json,sys
-agent=sys.argv[1]
-try: ms=json.load(sys.stdin)['team']['members']
-except: sys.exit(1)
-sys.exit(0 if any(m.get('agent_id')==agent for m in ms) else 1)
-" "$r" 2>/dev/null; then
+    roster_member team "$r" < <(thrum team "@$r" --offline --json 2>/dev/null)
+    if [ "$RM_STATUS" != match ]; then
       bad="$bad $r"
     fi
+    # An ambiguous entry was reported once, here (roster_member's stderr line names the entry and every
+    # candidate ID); the capture pass skips it rather than guess.
+    [ "$RM_STATUS" != ambiguous ] || ROSTER_AMBIGUOUS+=("$r")
   done
   if [ -n "$bad" ]; then
     ROSTER_SELF_CHECK_FAILED=1
@@ -787,10 +900,38 @@ for entry in data.get("roster", []):
 # is_declared_inactive — the owner declared this member absent on purpose
 # (`expected_inactive_roster` / `sleeping_roster` in watch_params.json). Its
 # failed capture is expected and is not an incident; any other failed capture is.
+# The roster entry and each declared entry are resolved to an agent by the same three rules (roster_member), then
+# the resulting agent IDs are compared: a bare roster `alice` is excused by a declared `alice@d1` when d1 is this
+# daemon or alice is unique, not when it resolves to another daemon's alice; an ambiguous declared entry (reported
+# by roster_member) excuses nothing. An entry that matches no team row (an agent that is gone, or the team
+# unreadable) can only be excused by the identical string. Only a declared entry with the roster entry's name
+# half is resolved.
 is_declared_inactive() {
-  local want="$1" d
+  local want="$1" d wst="" wid=""
   for d in ${DECLARED_INACTIVE[@]+"${DECLARED_INACTIVE[@]}"}; do
-    [ "$d" = "$want" ] && return 0
+    [ "${d%%@*}" = "${want%%@*}" ] || continue
+    if [ -z "$wst" ]; then
+      team_rows_for "$want"
+      roster_member team "$want" @id < <(printf '%s' "$TEAM_ROWS")
+      wst="$RM_STATUS"
+      wid="${RM_F[0]-}"
+      [ "$wst" != ambiguous ] || return 1
+    fi
+    team_rows_for "$d"
+    roster_member team "$d" @id < <(printf '%s' "$TEAM_ROWS")
+    case "$wst/$RM_STATUS" in
+      match/match) [ "$wid" != "${RM_F[0]-}" ] || return 0 ;;
+      none/none) [ "$d" != "$want" ] || return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# is_ambiguous_entry <entry> — true when roster_self_check found the entry ambiguous this run.
+is_ambiguous_entry() {
+  local e
+  for e in ${ROSTER_AMBIGUOUS[@]+"${ROSTER_AMBIGUOUS[@]}"}; do
+    [ "$e" != "$1" ] || return 0
   done
   return 1
 }
@@ -808,6 +949,8 @@ run_capture_cycle() {
   local file="$1" capture_id="$2" ts="$3" requested_lines="${4:-30}"
   local roster_idx=0
   local a session
+  TEAM_CACHE_KEYS=()
+  TEAM_CACHE_ROWS=()
   ARCHIVE_AGENTS=()
   ARCHIVE_RAW_FILES=()
   ARCHIVE_CAPTURE_RCS=()
@@ -826,6 +969,12 @@ run_capture_cycle() {
   fi
   : >"$file"
   for a in "${ROSTER[@]}"; do
+      # An ambiguous roster entry (reported once by roster_self_check) is skipped, never captured.
+      if is_ambiguous_entry "$a"; then
+        printf '=== %s ===\nSKIPPED: ambiguous roster entry (several agents share this name; use the full ID)\n\n' "$a" >>"$file"
+        roster_idx=$((roster_idx + 1))
+        continue
+      fi
       local safe raw_file primary_file primary_json_file provider_input_file ssh_file primary_rc=0 primary_json_rc="" ssh_rc="" cap_rc=0 runtime geometry_json capture_route provider_input_source capture_json_file daemon_override primary_capture_file capture_format
       safe="$(safe_capture_name "$a")"
       raw_file="${raw_root}/$(printf '%04d' "$roster_idx")-${safe}.txt"
@@ -1094,6 +1243,8 @@ main() {
   local fail_state="${outdir}/.last-failed-roster"
 
   load_roster "${watch_params}"
+  # This daemon's own ID, read once for the whole run (roster_member callers in command substitutions inherit it).
+  read_own_daemon_id
   REPO_ROOT="$(git -C "$worktree_root" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$worktree_root")"
   USE_JEV_REQUESTED=$(python3 -c 'import json,sys; print(int(json.load(open(sys.argv[1])).get("use_jev") is True))' "$watch_params" 2>/dev/null || echo 0)
   USE_JEV=0

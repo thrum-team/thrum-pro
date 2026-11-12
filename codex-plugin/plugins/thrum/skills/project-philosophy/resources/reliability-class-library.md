@@ -51,7 +51,7 @@ finding.
 - JS/TS:
 
   ```bash
-  grep -rnE 'child_process\.(exec|spawn)|fs\.(readFile|writeFile)Sync?|net\.connect|http\.request' --include='*.ts' --include='*.js'
+  grep -rnE 'child_process|\b(execSync|execFile|spawnSync)\(|fs\.(promises\.)?(readFile|writeFile)(Sync)?|net\.(connect|createConnection)|http\.request|\bfetch\(' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
 - Rust:
@@ -92,7 +92,7 @@ no enclosing recover/catch in the same function is a finding.
 - JS/TS:
 
   ```bash
-  grep -rnE 'setTimeout|setImmediate|\.then\(|async function' --include='*.ts' --include='*.js'
+  grep -rnE 'setInterval\(\s*async|\.forEach\(async|new Promise\(\s*async|\.on\(.\w+.,\s*async|\.then\([^)]*\)\s*;' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
   then check for an unhandled-rejection or `.catch()` immediately at the call
@@ -139,7 +139,7 @@ everything not in the list."
 - JS/TS:
 
   ```bash
-  grep -rnE 'fs\.rm(Sync)?|rimraf|DELETE FROM.*NOT IN' --include='*.ts' --include='*.js'
+  grep -rnE 'fs\.rm(Sync)?|rimraf|DELETE FROM.*NOT IN' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
 - Fallback: find the language's recursive-delete primitive and any "reconcile
@@ -172,8 +172,9 @@ presence.
   before use
 - Python: `grep -rn 'if os\.path\.exists\|if.*is not None' --include='*.py'`
   near privileged actions
-- JS/TS: `grep -rn 'if\s*(\w+)\s*{' --include='*.ts' --include='*.js'` near
-  privileged actions
+- JS/TS:
+  `grep -rn 'if\s*(\w+)\s*{' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'`
+  near privileged actions
 - Fallback: find presence-only guards (existence/non-null checks) immediately
   preceding a privileged or destructive call, with no accompanying capability
   check.
@@ -212,16 +213,26 @@ no timeout/circuit breaker.
 
   to check whether peer/network calls on a dispatch path have one
 
-- Python: `grep -rn 'with.*[Ll]ock' --include='*.py' -A10` for I/O inside the
-  block; `grep -rn 'requests\.\(get\|post\)\|socket\.' --include='*.py'` for
-  missing `timeout=`
+- Python:
+
+  ```bash
+  grep -rnE 'with[[:space:]]+\w*[Ll]ock\b|async with \w*[Ll]ock|\.acquire\(|select_for_update\(|transaction\.atomic' --include='*.py' -A12
+  ```
+
+  for I/O inside the held span, including an HTTP call (`requests`, `httpx`), a
+  subprocess or a blocking file op made while a lock, an `async with` lock,
+  `transaction.atomic()` or `select_for_update()` is open; separately
+  `grep -rn 'requests\.\(get\|post\)\|socket\.' --include='*.py'` for missing
+  `timeout=`
+
 - JS/TS:
 
   ```bash
-  grep -rnE 'await mutex\.|\.acquire\(\)' --include='*.ts' --include='*.js' -A10
+  grep -rnE 'await mutex\.|\.acquire\(\)|runExclusive|withLock|\$transaction\(|\.transaction\(' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs' -A10
   ```
 
-  for I/O inside the held span
+  for I/O inside the held span, including an HTTP call (`fetch`, `axios`) made
+  while a `runExclusive`, `withLock` or database transaction callback is open
 
 - Fallback: find the language's lock-acquisition primitive; check whether I/O
   happens while held, and whether outbound calls on a hot path carry an explicit
@@ -305,7 +316,9 @@ fixture.
 
 - Python: `grep -rn 'alembic\|migration' --include='*.py'`, then check test
   fixtures for a captured real DB snapshot vs. a freshly-created one
-- Node/TS: `grep -rn 'migrate\|knex\.' --include='*.ts'`, same fixture check
+- Node/TS:
+  `grep -rn 'migrate\|knex\.' --include='*.ts' --include='*.tsx' --include='*.mjs' --include='*.cjs'`,
+  same fixture check
 - Fallback: find the migration/recovery entrypoint; check for a mid-write-kill
   test and a real-old-snapshot migration test, not just synthetic fixtures.
 
@@ -338,13 +351,20 @@ finding.
   grep -rnE 'fallback|FallBack|if !exists|default.*return' --include='*.go'
   ```
 
-- Python: `grep -rn 'except:\s*pass\|\.get(\w+,\s*default_' --include='*.py'`
-  (bare `except: pass` swallowing an error, or a `.get(k, default_creds)` shaped
-  silent substitution)
+- Python:
+
+  ```bash
+  grep -rnE 'except:[[:space:]]*pass|\.get\(\w+,[[:space:]]*default_|(contextlib\.)?suppress\((Base)?Exception\)' --include='*.py'
+  ```
+
+  (bare `except: pass` swallowing an error, a `.get(k, default_creds)` shaped
+  silent substitution, or `contextlib.suppress(Exception)`, which no common
+  linter flags)
+
 - JS/TS:
 
   ```bash
-  grep -rnE 'catch\s*\{\s*\}|\?\?\s*default' --include='*.ts' --include='*.js'
+  grep -rnE 'catch\s*\{\s*\}|\?\?\s*default' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
   (an empty catch block, or a `??` fallback onto a default-shaped value with no
@@ -389,8 +409,9 @@ statement).
 
 - Python: `grep -rn 'ON CONFLICT DO UPDATE\|session\.merge(' --include='*.py'`
   with no accompanying version/timestamp comparison in the same transaction.
-- JS/TS: `grep -rn 'upsert(' --include='*.ts' --include='*.js'` on a route
-  reachable from both an API handler and a webhook handler, with no
+- JS/TS:
+  `grep -rn 'upsert(' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'`
+  on a route reachable from both an API handler and a webhook handler, with no
   `updatedAt`/version guard in the upsert's `where`/conflict clause.
 - Fallback: find upsert/replace call sites reachable from more than one caller;
   check for a timestamp or version guard gating the write.
@@ -443,8 +464,9 @@ assumed read-only, and check whether any write or maintenance statement
 
   in the same module.
 
-- JS/TS: `grep -rn 'fs\.open\|db\.prepare' --include='*.ts' --include='*.js'` in
-  a script/worker documented as read-only, cross-checked for a write call
+- JS/TS:
+  `grep -rn 'fs\.open\|db\.prepare' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'`
+  in a script/worker documented as read-only, cross-checked for a write call
   (`fs.write`, an `INSERT`/`UPDATE`/`DELETE`/`VACUUM` statement) in the same
   file.
 - Fallback: find the resource-open call in a read-only-labeled process; check
@@ -506,13 +528,13 @@ divergent call sites.
   wrapper (e.g.
 
   ```bash
-  grep -rlnE 'class ApiClient|export.*apiClient' --include='*.ts'
+  grep -rlnE 'class ApiClient|export.*apiClient' --include='*.ts' --include='*.tsx' --include='*.mjs' --include='*.cjs'
   ```
 
   ), then
 
   ```bash
-  grep -rnE 'fetch\(|axios\.' --include='*.ts' --include='*.js'
+  grep -rnE 'fetch\(|axios\.' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
   for call sites bypassing it with a raw `fetch`/`axios` call.
@@ -550,17 +572,24 @@ no-error check.
 - Go: `grep -rn 'require\.NoError\|assert\.NoError' --include='*_test.go'`
   scoped to hot-path test files, then check whether the same test function has
   any accompanying state/equality assertion.
-- Python: `grep -rln 'assert-free' 'test_*.py'` — a Python test file with no
-  `assert` beyond error-absence checks (e.g. no `assertEqual`/
+- Python:
 
   ```bash
-  assert result ==
+  grep -rLE 'assert|raises|assert_' --include='test_*.py'
   ```
 
-  ), scoped to hot-path-adjacent test modules.
+  lists each test file with no `assert`, `pytest.raises` or `mock.assert_*` call
+  at all; scope it to hot-path-adjacent test modules, then check files that do
+  assert for a state/equality check rather than only an error-absence check.
 
-- JS/TS: `grep -rn 'expect(.*\.not\.toThrow()' --include='*.test.ts'` as the
-  sole assertion in a hot-path-adjacent test.
+- JS/TS:
+
+  ```bash
+  grep -rnE 'expect\(.*\.not\.toThrow\(\)' --include='*.test.*' --include='*.spec.*'
+  ```
+
+  as the sole assertion in a hot-path-adjacent test.
+
 - Fallback: find tests covering hot-path handlers/lenses whose only assertion is
   "no error raised," with no accompanying state assertion.
 
@@ -619,7 +648,7 @@ equivalent guard/fix.
 - JS/TS: enumerate all save/write across `*.ts` —
 
   ```bash
-  grep -rnE '\.save\(|\.update\(|\.write\(' --include='*.ts' --include='*.js'
+  grep -rnE '\.(save|update|updateMany|upsert|create|insert|del|delete|write|writeFile)\(' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
   scoped to the same resource the fix targeted, then check each hit for the
@@ -673,7 +702,7 @@ and check whether the WHERE/filter clause uses the canonical liveness predicate
 - JS/TS: N+1 for-loop issuing per-item queries —
 
   ```bash
-  grep -rn 'for\s*(.*of.*)\s*{' --include='*.ts' --include='*.js' -A5
+  grep -rn 'for\s*(.*of.*)\s*{' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs' -A5
   ```
 
   checked for an `await db.query(` or equivalent per-row call inside the loop
@@ -740,13 +769,13 @@ against a fixed input to catch accidental drift.
 - JS/TS: hash → localStorage/DB key/JWT —
 
   ```bash
-  grep -rnE 'crypto\.createHash|normalize' --include='*.ts' --include='*.js'
+  grep -rnE 'crypto\.createHash|normalize' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
   for the primitive, cross-checked against
 
   ```bash
-  grep -rnE 'localStorage\.setItem|jwt\.sign|\.save\(' --include='*.ts' --include='*.js'
+  grep -rnE 'localStorage\.setItem|jwt\.sign|\.save\(' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
   ```
 
   for a persisted consumer.
@@ -794,18 +823,32 @@ intentionally public, is a finding.
 - Go: none — thrum's own hot-path handlers sit behind an mTLS perimeter that
   already authenticates every non-loopback caller; this concept targets repos
   with no equivalent perimeter. Emit no Go probe.
-- Python:
-  `grep -rn '@app\.\(route\|get\|post\|put\|delete\|patch\)\|@router\.\(get\|post\|put\|delete\|patch\)' --include='*.py'`,
-  then for each match check the surrounding function/decorator stack for
-  `@requires_auth`, `@login_required`, or a
-  `Depends(verify_token)`/`Depends(get_current_user)`-shaped FastAPI dependency;
-  a route with none of these, and no `# public`/`# internal-only` marker, is a
-  finding.
+- Python: auth is often attached above the handler, at router, app, blueprint or
+  settings level, so check all of those scopes, not only the handler's own
+  decorators. First list the route registrations with
+  `grep -rnE '@(app|router|bp|blueprint)\.(route|get|post|put|delete|patch)' --include='*.py'`.
+  Then list the Python files that carry no auth marker at any scope:
+
+  ```bash
+  grep -rLE 'login_required|jwt_required|requires_auth|before_request|Depends\(|Security\(|dependencies=|AuthenticationMiddleware|@requires\(|permission_classes|PermissionRequiredMixin|LoginRequiredMixin' --include='*.py'
+  ```
+
+  A route file in both lists is a candidate. Before calling it a finding, check
+  the app entry point and the settings module for
+  `include_router(..., dependencies=[...])`, `DEFAULT_PERMISSION_CLASSES` or an
+  auth middleware that covers the file. A route with no guard at any scope, and
+  no `# public`/`# internal-only` marker, is a finding.
+
 - JS/TS:
-  `grep -rn "app\.\(get\|post\|put\|delete\|patch\)(\|router\.\(get\|post\|put\|delete\|patch\)(" --include='*.ts' --include='*.js'`,
-  then check whether an auth middleware (e.g. `requireAuth`,
+
+  ```bash
+  grep -rnE "app\.(get|post|put|delete|patch)\(|router\.(get|post|put|delete|patch)\(" --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
+  ```
+
+  Then check whether an auth middleware (e.g. `requireAuth`,
   `passport.authenticate`, `verifyToken`) appears in the same handler's
   middleware chain before the handler body.
+
 - Rust: no probe defined for this concept yet.
 - Fallback: find the target language's route/handler registration primitive;
   check whether an auth guard (middleware, decorator, dependency-injection
@@ -840,7 +883,11 @@ redaction step.
 - Python:
   `grep -rn 'log\(ger\)\?\.\(info\|debug\|warning\|error\)(.*\(token\|request\.headers\|authorization\|api_key\|secret\)\|print(.*\(token\|request\.headers\|authorization\)' --include='*.py' -i`
 - JS/TS:
-  `grep -rn 'console\.\(log\|error\|warn\|info\)(.*\(req\.headers\|token\|authorization\|apiKey\|secret\)' --include='*.ts' --include='*.js' -i`
+
+  ```bash
+  grep -rnE 'console\.(log|error|warn|info)\(.*(req\.headers|token|authorization|apiKey|secret)' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs' -i
+  ```
+
 - Rust: no probe defined for this concept yet.
 - Fallback: find the language's logging/print primitives on the hot path; check
   whether any call site passes a whole headers/request object or a
@@ -882,11 +929,20 @@ been removed (a diff-visible regression) is also a finding.
   `grep -rn '@limiter\.\(limit\|exempt\)\|@ratelimit' --include='*.py'`
   cross-checked via `git log -p` for a removed `@limiter` decorator on a
   hot-path route.
-- JS/TS: `grep -rn 'Promise\.all(' --include='*.ts' --include='*.js'`, checked
-  for whether the mapped array length is caller-controlled (request body/query
-  param) and no chunking/`p-limit`/semaphore wraps it; separately
-  `grep -rn 'rateLimit\|express-rate-limit\|limiter' --include='*.ts' --include='*.js'`
-  to confirm a limiter exists on the entry point.
+- JS/TS:
+
+  ```bash
+  grep -rn 'Promise\.all(' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
+  ```
+
+  Check whether the mapped array length is caller-controlled (request body/query
+  param) and no chunking/`p-limit`/semaphore wraps it. Separately, to confirm a
+  limiter exists on the entry point:
+
+  ```bash
+  grep -rnE 'rateLimit|express-rate-limit|limiter' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.mjs' --include='*.cjs'
+  ```
+
 - Rust: no probe defined for this concept yet.
 - Fallback: find the hot-path handler or proxy/fan-out loop; check for a rate
   limiter at the entry point and a concurrency cap (semaphore, bounded worker

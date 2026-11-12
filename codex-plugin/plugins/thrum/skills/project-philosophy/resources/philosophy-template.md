@@ -2,7 +2,7 @@
 
 > **For all agents:** This document governs how features are built. Read this
 > BEFORE any plan file or task descriptions. When in doubt, ask: "[your >
-> project's guiding question — e.g., 'Am I wiring a real service, or faking >
+> project's guiding question — e.g., 'Am I using the real thing, or faking >
 > it?']"
 >
 > **Fill this template** for your project. The pre-filled examples below are
@@ -12,23 +12,25 @@
 
 **Every implementation MUST satisfy ALL of these criteria:**
 
-1. [Criterion 1 — e.g., Handler calls real service method, not hardcoded data]
-2. [Criterion 2 — e.g., Template renders from service response, not inline HTML]
-3. [Criterion 3 — e.g., Changing underlying data changes rendered output]
-4. [Criterion 4 — e.g., Access control uses real permission checks, not
-   client-side hiding]
+1. [Criterion 1 — e.g., The code calls the real component that owns the
+   behaviour, not hardcoded data]
+2. [Criterion 2 — e.g., Output is built from the real response, not text written
+   by hand into the code]
+3. [Criterion 3 — e.g., Changing the underlying data changes the output]
+4. [Criterion 4 — e.g., Access control uses real permission checks made where
+   the data is held, not checks in the caller's display layer]
 5. The verification step in the task description passes
 
 ## Decision Framework
 
 When implementing any requirement, follow this decision tree:
 
-| Question                                   | Action                                |
-| ------------------------------------------ | ------------------------------------- |
-| Does a backend service already exist?      | Wire it. Do not rewrite.              |
-| Does the service exist but need extension? | Extend the service, then wire.        |
-| Is this purely new capability?             | Build minimal service first, then UI. |
-| Is this seed data / configuration?         | Load into real stores, not hardcoded. |
+| Question                                       | Action                                                |
+| ---------------------------------------------- | ----------------------------------------------------- |
+| Does a component that does this already exist? | Use it. Do not rewrite.                               |
+| Does it exist but need extension?              | Extend it, then use it.                               |
+| Is this purely new capability?                 | Build the minimal component first, then what uses it. |
+| Is this seed data / configuration?             | Load into the real store, not hardcoded.              |
 
 ## Anti-Patterns
 
@@ -37,55 +39,52 @@ When implementing any requirement, follow this decision tree:
 <!-- (project-philosophy SKILL.md Step 4a) — as many numbered sections as the probe finds, not a fixed count. -->
 <!-- The BAD/GOOD format is critical — it makes the standard concrete and unambiguous. -->
 
-### 1. Hardcoded data in handlers
+### 1. Hardcoded data where real data belongs
 
 ```text
-// BAD — handler returns static data, ignoring the service layer
-func handleList(w http.ResponseWriter, r *http.Request) {
-    items := []Item{{Name: "hardcoded-1"}, {Name: "hardcoded-2"}}
-    tmpl.Execute(w, items)
-}
+// BAD — the function returns a fixed list and ignores the data layer
+function listItems():
+    return [{name: "hardcoded-1"}, {name: "hardcoded-2"}]
 
-// GOOD — handler calls real service, renders response
-func handleList(w http.ResponseWriter, r *http.Request) {
-    items, err := h.store.ListItems(r.Context())
-    if err != nil { http.Error(w, err.Error(), 500); return }
-    tmpl.Execute(w, items)
-}
+// GOOD — it asks the data layer for the real list and reports failures
+function listItems():
+    items, error = store.listItems()
+    if error: report the error and stop
+    return items
 ```
 
 **Why:** Hardcoded data passes tests but breaks when real data changes. It
 creates a false sense of completion.
 
-### 2. Client-side permission hiding
+### 2. Hiding instead of denying
 
-```html
-<!-- BAD — server renders everything, JS/CSS hides unauthorized items -->
-<button id="admin-action" style="display:none">Delete</button>
-<script>
-  if (userRole === "admin") show("admin-action");
-</script>
+```text
+// BAD — everything is sent, and the caller's display hides what the user
+// may not use
+send all actions to the caller
+caller hides the actions the user may not use
 
-<!-- GOOD — server only renders items the user can access -->
-{{if .Permissions.CanDelete}}
-<button>Delete</button>
-{{end}}
+// GOOD — the owner of the data returns only what this user may use, and
+// refuses any other request
+send only the actions this user may use
+refuse a request for any other action
 ```
 
-**Why:** Client-side hiding is a UI illusion, not access control. The server
-still processes unauthorized requests.
+**Why:** Hiding is not access control. The part that holds the data still serves
+unauthorized requests.
 
 ### 3. Scripted/mocked responses in production paths
 
-```python
-# BAD — handler returns a pre-written response instead of calling the service
-def analyze(request):
-    return {"result": "This ticket appears to be high priority..."}
+```text
+// BAD — the function returns a pre-written answer instead of calling the
+// real service
+function analyze(request):
+    return {result: "This ticket appears to be high priority..."}
 
-# GOOD — handler calls the real analysis service
-def analyze(request):
-    result = analysis_service.analyze(request.ticket_id)
-    return {"result": result}
+// GOOD — it calls the real analysis service
+function analyze(request):
+    result = analysisService.analyze(request.ticketId)
+    return {result: result}
 ```
 
 **Why:** Scripted responses mask integration failures. The service may not
@@ -113,20 +112,20 @@ actually work, and you won't know until production.
 
 Not everything needs to be production-grade. These simplifications are OK:
 
-| Simplification             | Why It's OK                          | Boundary (when to stop)                  |
-| -------------------------- | ------------------------------------ | ---------------------------------------- |
-| SQLite instead of Postgres | Same SQL interface, simpler setup    | When concurrent write throughput matters |
-| Cached/mock external APIs  | Deterministic tests, no network deps | When testing real API behavior changes   |
-| Static seed data           | Reproducible demos and tests         | When data must reflect real user input   |
-| [Project-specific]         | [Rationale]                          | [Boundary]                               |
+| Simplification                  | Why It's OK                          | Boundary (when to stop)                |
+| ------------------------------- | ------------------------------------ | -------------------------------------- |
+| Lightweight dependency stand-in | Same interface, simpler setup        | When behaviour under real load matters |
+| Cached/mock external APIs       | Deterministic tests, no network deps | When testing real API behavior changes |
+| Static seed data                | Reproducible demos and tests         | When data must reflect real user input |
+| [Project-specific]              | [Rationale]                          | [Boundary]                             |
 
 ## Red Flags
 
 If you see any of these in your code, **STOP and fix before continuing:**
 
-- [ ] Literal data structures returned from handlers (not from a store/service)
-- [ ] Inline HTML generation (`fmt.Fprintf`, string concatenation) instead of
-      templates
+- [ ] Literal data returned instead of coming from the real store or service
+- [ ] Output assembled by hand in code (string concatenation) where the project
+      has a template or formatter
 - [ ] Missing error handling on service/store calls
 - [ ] TODO/FIXME comments left in committed code
 - [ ] [Project-specific red flag]
@@ -138,11 +137,11 @@ If you see any of these in your code, **STOP and fix before continuing:**
 ### Before You Start a Task
 
 - [ ] Read the design doc referenced in your prompt
-- [ ] Read the task description (`bd show {TASK_ID}`, or
-      `thrum issue show {TASK_ID}` without beads) — it's your source of truth
+- [ ] Read the task description (the show command of the configured tracker,
+      given the task id) — it's your source of truth
 - [ ] Search the plan file for your task's implementation code
       (`grep "## Task: {BEAD_ID}" plan-file.md`)
-- [ ] Identify which existing services to wire (do not reimplement)
+- [ ] Identify which existing components to use (do not reimplement)
 - [ ] Review the anti-patterns above — know what NOT to do
 
 ### Before You Close a Task

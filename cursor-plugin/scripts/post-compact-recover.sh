@@ -63,9 +63,8 @@ echo "You were just compacted. Run \`thrum prime\` to restore your project conte
 # Best-effort throughout, matching the rest of this hook: any failure here
 # (no identity file, no jq, `thrum send` itself failing) logs to stderr and
 # falls through to the remaining steps — it must never abort the hook.
-# The Read tool needs an absolute path; THRUM_HOME may be relative (default ".").
-_abs_home=$(cd "$THRUM_HOME" 2>/dev/null && pwd) || _abs_home="$THRUM_HOME"
 IDENTITIES_DIR="$THRUM_HOME/.thrum/identities"
+_abs_home=$(cd "$THRUM_HOME" 2>/dev/null && pwd) || _abs_home="$THRUM_HOME"
 IDENTITY_AGENT_ID=""
 if command -v jq >/dev/null 2>&1 && [ -d "$IDENTITIES_DIR" ]; then
   for _id_file in "$IDENTITIES_DIR"/*.json; do
@@ -115,9 +114,9 @@ else
   # when its body holds an apostrophe, and the hook dies before sending. The
   # snapshot path is the only expansion here; its value is never re-parsed.
   if [ -n "$COMPACT_SNAPSHOT" ]; then
-    COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1. If the Resume Plan is missing, read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool)."
+    COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1. If the briefing is missing, read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool)."
   else
-    COMPACT_MSG="You've been compacted. No snapshot found — please re-prime normally."
+    COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1. No snapshot found: please re-prime normally."
   fi
 
   if command -v thrum >/dev/null 2>&1; then
@@ -254,7 +253,8 @@ if [ -n "$TMUX_SESSION" ] || [ -n "${TMUX:-}" ]; then
   exit 0
 fi
 
-PID_FILE="${THRUM_DIR_RESOLVED}/var/${AGENT_ID}-listener.pid"
+AGENT_NAME="${AGENT_ID%%@*}"
+PID_FILE="${THRUM_DIR_RESOLVED}/var/${AGENT_NAME}-listener.pid"
 if [ ! -f "$PID_FILE" ]; then
   echo "No listener running. Spawn a new listener." >&2
   exit 0

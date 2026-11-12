@@ -119,20 +119,23 @@ batch-reap `git worktree list` on a proxy heuristic. The reap preconditions
 (HEAD containment, only-copy untracked state, direct-death observation) are
 mandatory.
 
-**Why:** `thrum worktree teardown <name>` does exactly what its name says — it
-tears down the **worktree** — and is intentionally not coupled to runtime
-lifecycle. If the agent's runtime is still running in tmux when you teardown,
-the runtime keeps executing zombie-style with its cwd pointing at a deleted
-directory. The next operation the user attempts in that tmux pane fails
-confusingly, and they have to manually `tmux kill-session` and exit.
+**Why:** `thrum worktree teardown <name>` removes the **worktree** and refuses a
+LIVE one. Live means a process with its cwd or argv inside, a live tmux pane in
+any socket in the default tmux socket directory, or a live agent-scratchpad
+owner; if liveness cannot be determined it refuses too. Teardown itself makes a
+best-effort kill of the agent's tmux session, but only after the liveness check
+passes, so a live session refuses it: kill first. `--even-if-live` proceeds
+despite liveness (that kill is then what ends a live agent); `--force-unsafe`
+alone does not bypass the refusal.
 
 **How to apply:** When recycling an agent (epic done, agent should be removed),
-run the two-command destroy sequence **in this order**:
+run this sequence **in this order**:
 
 ```bash
-thrum tmux kill <session>          # kills tmux + runtime first
-thrum worktree teardown <name>     # then retires the agent + removes the worktree (salvage first)
-thrum agent delete <agent>         # SEPARATE reap, after the worktree is gone
+thrum tmux kill <session>                  # kills tmux + runtime first; verify it is gone
+thrum agent set-phase retired --agent <name>   # keeps the registry row
+thrum worktree teardown <name>             # removes the worktree (salvage first)
+thrum agent delete <agent>                 # SEPARATE reap, after the worktree is gone
 ```
 
 `worktree teardown` does NOT delete the agent: it is preparation for deleting
@@ -142,13 +145,14 @@ overview / UI; visible with `--include-inactive` / `--phase retired`) until
 whose linked worktree still exists or whose process (pid/tmux) is live, and
 refuses coordinators; correct order is teardown (with salvage) THEN delete.
 
-Sanity-check: after teardown, `tmux list-sessions` should NOT show the agent's
-session. If it does, the runtime was never killed and step 1 was skipped.
+Sanity-check: before teardown, `tmux list-sessions` must NOT show the agent's
+session. If teardown refuses as live, kill the session and retry; use
+`--even-if-live` only for a deliberate override.
 
 For batch recycling (multiple agents at once), kill them all first, then
 teardown all worktrees — keeps the daemon's session state consistent across the
 operation. For graceful shutdown of in-flight agents, send a thrum message
-asking them to save state, wait for ack, then run the two-command sequence.
+asking them to save state, wait for ack, then run the sequence above.
 Done/idle agents on closed epics need no graceful shutdown.
 
 ## Expect orchestrators to remove implementer worktrees at completion — do not defer this to a coordinator audit

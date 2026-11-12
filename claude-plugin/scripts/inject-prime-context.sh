@@ -73,7 +73,7 @@ if [ -n "$EULA_LINE" ]; then
 fi
 if command -v jq >/dev/null 2>&1; then
   AGENT_ID=$(printf '%s' "$WHOAMI_JSON" \
-    | jq -r 'select(.agent_id != null) | .agent_id // empty' 2>/dev/null \
+    | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")' 2>/dev/null \
     || true)
 fi
 
@@ -113,6 +113,8 @@ HOOK_SOURCE=""
 if command -v jq >/dev/null 2>&1; then
   HOOK_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // empty' 2>/dev/null || true)
 fi
+# Tell `thrum prime` why this session started (startup|resume|clear|compact; empty when unknown).
+export THRUM_PRIME_SOURCE="$HOOK_SOURCE"
 
 LIGHT_MODE=0
 SNAPSHOT_SHOWN=""

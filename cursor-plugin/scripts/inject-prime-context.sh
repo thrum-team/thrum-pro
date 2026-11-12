@@ -50,7 +50,7 @@ AGENT_ID=""
 if command -v jq >/dev/null 2>&1; then
   WHOAMI_JSON=$(thrum whoami --json 2>/dev/null || true)
   AGENT_ID=$(printf '%s' "$WHOAMI_JSON" \
-    | jq -r 'select(.agent_id != null) | .agent_id // empty' 2>/dev/null \
+    | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")' 2>/dev/null \
     || true)
 fi
 

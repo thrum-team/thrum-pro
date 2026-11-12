@@ -162,9 +162,12 @@ of 538 on a canary). Compare what the daemon lists with what the GUI renders, on
    installed `chromium-<rev>` under the Playwright browsers dir (`PLAYWRIGHT_BROWSERS_PATH`, else the per-user
    `ms-playwright` cache; a Playwright upgrade can leave only other revisions), then an installed Google Chrome. It
    prints the route used (`browser=...`) on stderr and never installs a browser, so a node near its disk guard is not
-   touched. `node <skill>/resources/agent-count-gui.mjs <ui-url>` (the `ui` line of `thrum daemon status`; the script
-   header says where Playwright must resolve) prints `rail` and `fleet`; it exits 3 with a message when no browser is
-   usable. Without a browser, open `<ui-url>` at 1280x720 and read by hand:
+   touched. Playwright resolves in this order, and nothing is installed: the script's own import; the npm global root
+   (`npm root -g`) and the playwright-cli package's `node_modules` (under that root and under `~/.local`); then the
+   directory named by `THRUM_PLAYWRIGHT_PATH`. `node <skill>/resources/agent-count-gui.mjs <ui-url>` (the `ui` line of
+   `thrum daemon status`) prints `rail` and `fleet`. It exits 3 with one message naming `THRUM_PLAYWRIGHT_PATH` and
+   every location tried when Playwright or a browser is missing. Without a browser, open `<ui-url>` at
+   1280x720 and read by hand:
    - rail: the heading `Agents (N)` above the left-rail list (`h3` in the agent list);
    - Fleet: add the five badges `category-count-Working`, `-Standby`, `-EmptySession`, `-RuntimeExited`, `-Worktree`
      (the Stale and Archived badges come from a separate query and are not part of the sum);

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Role Setup"
+  short_description: "Use when designing a new Thrum agent role or revising an installed role bundle - chooses a built-in base role, drafts its role files and thrum-<role>-<skill> skills as a bundle folder, checks names, and packs it"
+  default_prompt: "Use when designing a new Thrum agent role or revising an installed role bundle - chooses a built-in base role, drafts its role files and thrum-<role>-<skill> skills as a bundle folder, checks names, and packs it"

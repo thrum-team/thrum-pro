@@ -142,10 +142,51 @@ printf '%s' "${ROSTER_JSON}" | jq -e 'all(.[]; (type == "string" and length > 0)
 
 # The team: the name must be free, the parent and every local member known.
 TEAM_JSON="$("${THRUM}" team --json 2>/dev/null)" || die "could not read the team (thrum team --json failed)"
+# This daemon's own ID: `daemon_id` from `thrum whoami --json`, read once here for every member_exists call below.
+# Absent (an old-form daemon) it stays empty: no row is qualified and every row is local.
+OWN_DAEMON_ID="$("${THRUM}" whoami --json </dev/null 2>/dev/null | jq -r '.daemon_id // ""' 2>/dev/null)" || OWN_DAEMON_ID=""
+# A team row with is_local false whose id names this daemon: the flag wins (the row is not local); one stderr line
+# per such row, once per run.
+[ -z "${OWN_DAEMON_ID}" ] || printf '%s' "${TEAM_JSON}" | jq -r --arg own "${OWN_DAEMON_ID}" '.team.members[]? | select(.is_local == false) | (.agent_id // "") | select(endswith("@" + $own))' 2>/dev/null |
+  while IFS= read -r w; do printf "team row '%s' has is_local false but names this daemon\n" "${w}" >&2; done
+# member_exists <entry> [local]: 0 when the entry resolves to exactly one team member. A full ID (has "@") matches
+# the row whose agent_id equals it (a row with no "@" counts as <id>@<this daemon> when that ID is known) and
+# nothing else. A bare name means this daemon's agent first (a row that carries a boolean is_local is local exactly
+# when it says so; without one it is local when its agent_id has no "@" or its daemon half is this daemon), matched on .name when non-empty, else the id up to "@"; a bare
+# row `a` and a row `a@<this daemon>` are one agent. With no local match the single other row of that name is the
+# member. Several candidate IDs resolve to nothing: one stderr line names them and the callers take their
+# existing "does not resolve" / not-registered path. The "local" argument looks at this daemon's rows only (the
+# watcher's own name: an agent of that name on another daemon neither blocks nor is ambiguous).
 member_exists() {
-  printf '%s' "${TEAM_JSON}" | jq -e --arg a "$1" '[.team.members[]?.agent_id] | index($a) != null' >/dev/null
+  local res
+  res="$(printf '%s' "${TEAM_JSON}" | jq -r --arg r "$1" --arg own "${OWN_DAEMON_ID}" --arg loc "${2-}" '
+    [.team.members[]? | (.agent_id // "") as $id
+      | {id: $id,
+         name: ((.name // "" | select(. != "")) // ($id | split("@")[0])),
+         lcl: (if (.is_local | type) == "boolean" then .is_local else ((($id | contains("@")) | not) or ($own != "" and ($id | endswith("@" + $own)))) end)}
+      | .nid = (if ($id | contains("@")) or $own == "" or (.lcl | not) then $id else $id + "@" + $own end)] as $m
+    | if ($r | contains("@")) then
+        (if any($m[]; .id == $r or .nid == $r) then "match" else "none" end)
+      else
+        ([$m[] | select(.name == $r)]) as $c
+        | ([$c[] | select(.lcl) | .nid] | unique) as $l
+        | (if $loc == "local" then [] else [$c[] | select(.lcl | not) | .nid] | unique end) as $x
+        | if ($l | length) == 1 then "match"
+          elif ($l | length) > 1 then "ambiguous " + ($l | join(" "))
+          elif ($x | length) == 1 then "match"
+          elif ($x | length) > 1 then "ambiguous " + ($x | join(" "))
+          else "none" end
+      end' 2>/dev/null)" || return 1
+  case "${res}" in
+    match) return 0 ;;
+    ambiguous*)
+      printf "ambiguous roster entry '%s': candidates %s\n" "$1" "${res#ambiguous }" >&2
+      return 1
+      ;;
+    *) return 1 ;;
+  esac
 }
-member_exists "${NAME}" && die "${NAME} is already registered"
+member_exists "${NAME}" local && die "${NAME} is already registered"
 case "${PARENT}" in
   user:*) ;;
   *) member_exists "${PARENT}" || die "--parent ${PARENT} does not resolve in thrum team" ;;

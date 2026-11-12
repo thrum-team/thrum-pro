@@ -40,6 +40,9 @@
 #
 # Exit status: propagates the underlying command's exit status from
 # whichever path (local or SSH) actually produced the returned output.
+# In key mode, exit 5 means the keys were SENT but the executing daemon saw the
+# pane unchanged: it is not a proxy failure, so it never triggers the SSH
+# retry (which would send the keys a second time); the caller re-captures.
 set -uo pipefail
 
 USAGE="usage: $0 <capture|key> <agent_name> <ssh_target> <ssh_user> <repo_path> [tmux_session | keys...]"
@@ -69,6 +72,13 @@ is_proxy_failure() {
   grep -qE 'rpcrouter: caller-peer lacks required capability|peer unreachable|circuit open, dial skipped' <<<"$1"
 }
 
+# POSIX single-quote a value for the remote shell: a quote in it cannot end the quoting.
+sq() {
+  local q="'" v="$1"
+  v="${v//$q/$q\\$q$q}"
+  printf "'%s'" "$v"
+}
+
 ssh_destination() {
   if [ -n "${SSH_USER}" ]; then
     printf '%s@%s' "${SSH_USER}" "${SSH_TARGET}"
@@ -96,14 +106,16 @@ run_ssh() {
   dest="$(ssh_destination)"
   if [ "${MODE}" = "capture" ] && [ -z "${REPO_PATH}" ] && printf '%s' "${TMUX_SESSION}" | grep -Eq '^[A-Za-z0-9_.:-]+$'; then
     # Read-only raw capture of the named tmux session: no thrum, no keys.
-    cmd="tmux has-session -t '=${TMUX_SESSION%%:*}' 2>/dev/null || exit 1; tmux capture-pane -p -J -t '=${TMUX_SESSION%%:*}:' -S -30"
+    # The session name is quoted for the remote shell with sq (the grep above is line-oriented, so a value with an
+    # embedded newline passes it): whatever it holds reaches tmux as one argument.
+    cmd="tmux has-session -t $(sq "=${TMUX_SESSION%%:*}") 2>/dev/null || exit 1; tmux capture-pane -p -J -t $(sq "=${TMUX_SESSION%%:*}:") -S -30"
     # shellcheck disable=SC2029
-    ssh -n -o BatchMode=yes -o ConnectTimeout=5 "${dest}" "${cmd}" 2>&1
+    ssh -n -o BatchMode=yes -o ConnectTimeout=5 -- "${dest}" "${cmd}" 2>&1
     return
   fi
   case "$MODE" in
-    capture) cmd="thrum tmux capture '$AGENT'" ;;
-    key)     cmd="thrum tmux send '$AGENT' --keys $(IFS=,; printf '%s' "${EXTRA_ARGS[*]:-}")" ;;
+    capture) cmd="thrum tmux capture $(sq "$AGENT")" ;;
+    key)     cmd="thrum tmux send $(sq "$AGENT") --keys $(IFS=,; printf '%s' "${EXTRA_ARGS[*]:-}")" ;;
   esac
   # Client-side expansion of REPO_PATH/cmd into the remote command string is
   # intentional -- that's how the resolved repo path and thrum invocation
@@ -112,7 +124,7 @@ run_ssh() {
   # the remote `cd` -- consistent with fail-closed-on-bad-topology-data
   # everywhere else in this pair of scripts.
   # shellcheck disable=SC2029
-  ssh "${dest}" "cd '${REPO_PATH}' && ${cmd}" 2>&1
+  ssh -- "${dest}" "cd $(sq "${REPO_PATH}") && ${cmd}" 2>&1
 }
 
 # ssh-add retry: if the SSH hop itself fails at the connection layer (not a

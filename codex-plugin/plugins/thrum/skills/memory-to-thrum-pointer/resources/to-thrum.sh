@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
-# to-thrum.sh <topic-file.md> <trigger> [kind]
+# to-thrum.sh <topic-file.md> <trigger> [kind] --personal|--box-wide
 # Copies the topic file's body (after the frontmatter) into a thrum memory
 # record unchanged, verifies it byte for byte, adds thrum_memory: <ID> to the
 # file's frontmatter metadata, and prints the ID. Reuses an existing ID if the
 # file already has thrum_memory set. Never deletes anything.
+#
+# Exactly one of --personal or --box-wide is required (any position). --personal
+# creates the record with --scope agent and --tag personal: the agent's own
+# memory, delivered by the personal block, no shared index line. --box-wide
+# creates it with --scope project and --tag indexed_in:runtime_memory: a memory
+# every agent on the machine needs, with a line in the shared index. The two
+# tags are exclusive. The claude-memory tag is kept on both.
 #
 # Runtime- and box-neutral: no paths are hard-coded. The memory directory is
 # the topic file's directory and the index is <memory dir>/MEMORY.md (the
@@ -14,7 +21,27 @@
 # helper probes that entitlement through the daemon before reading or writing
 # anything. Without it the helper exits 7 with a plain message and changes nothing.
 set -euo pipefail
-f="${1:?topic file}"; trigger="${2:?trigger}"; kind="${3:-agent_rule}"
+usage() { echo "usage: to-thrum.sh <topic-file.md> <trigger> [agent_rule|lesson] --personal|--box-wide" >&2; exit 2; }
+audience=""; npos=0; pos0=""; pos1=""; pos2=""
+for a in "$@"; do
+  case "$a" in
+    --personal|--box-wide)
+      [ -z "$audience" ] || [ "$audience" = "$a" ] || { echo "use exactly one of --personal or --box-wide" >&2; exit 2; }
+      audience="$a" ;;
+    --*) echo "unknown option: $a" >&2; usage ;;
+    *)
+      case "$npos" in 0) pos0="$a" ;; 1) pos1="$a" ;; 2) pos2="$a" ;; *) usage ;; esac
+      npos=$((npos + 1)) ;;
+  esac
+done
+[ "$npos" -ge 2 ] || usage
+[ -n "$audience" ] || { echo "pass exactly one of --personal or --box-wide" >&2; usage; }
+f="$pos0"; trigger="$pos1"; kind="${pos2:-agent_rule}"
+if [ "$audience" = "--personal" ]; then
+  scope="agent"; audience_tag="personal"; reuse_note=""
+else
+  scope="project"; audience_tag="indexed_in:runtime_memory"; reuse_note=" A tag does not change scope: an agent-scoped record cannot become box-wide, so create a new record with --box-wide."
+fi
 [ -f "$f" ] || { echo "no file: $f" >&2; exit 2; }
 f="$(cd "$(dirname "$f")" && pwd)/$(basename "$f")"
 repo="${THRUM_REPO:-}"
@@ -40,10 +67,12 @@ awk 'BEGIN{n=0} /^---$/ && n<2 {n++; next} n>=2{print}' "$f" | awk 'NR==1 && $0=
 id="$(awk '/^  thrum_memory: /{print $2; exit}' "$f")"
 cd "$repo"
 if [ -z "$id" ]; then
-  out="$(thrum memory create --kind "$kind" --scope agent --title "$(basename "$f" .md)" \
-    --oneline "$trigger" --full @"$tmp/body.md" --tag claude-memory --json)"
+  out="$(thrum memory create --kind "$kind" --scope "$scope" --title "$(basename "$f" .md)" \
+    --oneline "$trigger" --full @"$tmp/body.md" --tag claude-memory --tag "$audience_tag" --json)"
   id="$(printf '%s' "$out" | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get("id") or d.get("record",{}).get("id",""))')"
   [ -n "$id" ] || { echo "create gave no id: $out" >&2; exit 4; }
+else
+  echo "reusing $id: its tags and scope are unchanged. To set the tag: thrum memory edit $id --add-tag $audience_tag.$reuse_note" >&2
 fi
 thrum memory show "$id" --format body --zoom full > "$tmp/back.md"
 if ! cmp -s "$tmp/body.md" "$tmp/back.md"; then

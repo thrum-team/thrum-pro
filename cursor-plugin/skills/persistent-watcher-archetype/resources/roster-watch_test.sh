@@ -285,6 +285,22 @@ assert_eq "capture_daemon_overrides absent from watch_params.json: entry 1 inert
 rm -r -- "$d4b_dir"
 trap - EXIT
 
+# is_declared_inactive resolves the roster entry and each declared entry through `thrum team` (roster_member), so this
+# test serves canned team rows and a canned whoami from a thrum shim (no daemon is touched): D_TEAM holds the rows
+# for every scoped read, D_OWN is this daemon's ID ("" = an old-form daemon with no daemon_id). set_own re-arms the
+# once-per-run daemon-ID cache.
+D_TEAM='{"team":{"members":[]}}'
+D_OWN=""
+thrum() {
+  case "$1" in
+    team) printf '%s\n' "$D_TEAM" ;;
+    whoami) [ -z "$D_OWN" ] || printf '{"agent_id":"x@%s","name":"x","daemon_id":"%s"}\n' "$D_OWN" "$D_OWN" ;;
+    *) return 0 ;;
+  esac
+}
+# shellcheck disable=SC2034 # the cache variables belong to the sourced roster-watch.sh
+set_own() { D_OWN="$1"; OWN_DAEMON_ID_READ=0; OWN_DAEMON_ID=""; }
+
 # Declared-inactive members: expected_inactive_roster / sleeping_roster are
 # read by load_roster; a member in neither list is not declared.
 d5_dir="$(mktemp -d)"
@@ -321,6 +337,90 @@ assert_eq "declared roster: only names and {agent_id} count; {agent}/{name} decl
 assert_eq "declared roster: a null entry excuses nothing" "no" "$d5_null"
 assert_eq "declared roster: a dict-valued list excuses nothing" "no" "$d5_b2"
 assert_eq "declared roster: a bad entry does not drop the good ones after it" "yes" "$d5_c2"
+# A qualified entry is kept as given and declares exactly that ID (never the bare name, never another daemon's).
+python3 -c '
+import json, sys
+json.dump({"roster": ["agent_a@d_TESTDAEMON", "agent_b@d_TESTDAEMON", "agent_c"], "expected_inactive_roster": [{"agent_id": "agent_a@d_TESTDAEMON"}], "sleeping_roster": [{"agent_id": "agent_b@d_TESTDAEMON"}, "agent_c@d_TESTDAEMON"]}, open(sys.argv[1], "w"))
+' "$d5_params"
+load_roster "$d5_params"
+is_declared_inactive agent_a@d_TESTDAEMON && d5_qa=yes || d5_qa=no
+is_declared_inactive agent_b@d_TESTDAEMON && d5_qb=yes || d5_qb=no
+is_declared_inactive agent_c@d_TESTDAEMON && d5_qc=yes || d5_qc=no
+is_declared_inactive agent_a && d5_qbare=yes || d5_qbare=no
+is_declared_inactive agent_a@d_OTHER && d5_qother=yes || d5_qother=no
+is_declared_inactive agent_c && d5_qcbare=yes || d5_qcbare=no
+assert_eq "declared roster: {agent_id=name@daemon} in expected_inactive_roster declares that ID" "yes" "$d5_qa"
+assert_eq "declared roster: {agent_id=name@daemon} in sleeping_roster declares that ID" "yes" "$d5_qb"
+assert_eq "declared roster: string name@daemon declares that ID" "yes" "$d5_qc"
+assert_eq "declared roster: a qualified declaration does not declare the bare name (control)" "no" "$d5_qbare"
+assert_eq "declared roster: a qualified declaration does not declare another daemon's ID (control)" "no" "$d5_qother"
+assert_eq "declared roster: string name@daemon does not declare the bare name (control)" "no" "$d5_qcbare"
+assert_eq "load_roster keeps a qualified roster entry as given" "agent_a@d_TESTDAEMON" "${ROSTER[0]}"
+assert_eq "load_roster keeps a bare roster entry as given (control)" "agent_c" "${ROSTER[2]}"
+# Resolved comparison: the roster entry and each declared entry are resolved to an agent by the three rules, then the
+# agent IDs are compared (the string tests above run with no team rows, where only identical strings match).
+decl() { # decl <declared entry...> : load a params file whose expected_inactive_roster is the given entries
+  python3 -c '
+import json, sys
+json.dump({"roster": ["alice"], "expected_inactive_roster": sys.argv[2:]}, open(sys.argv[1], "w"))
+' "$d5_params" "$@"
+  load_roster "$d5_params"
+}
+cand() { is_declared_inactive "$1" 2>"$d5_dir/err" && echo yes || echo no; }
+# declared alice@dL, roster bare alice, dL is this daemon (alice is the local row): excused
+set_own dL
+D_TEAM='{"team":{"members":[{"agent_id":"alice","name":"alice","is_local":true},{"agent_id":"alice@d1","name":"alice","is_local":false}]}}'
+decl alice@dL
+assert_eq "declared roster: a bare roster alice is excused by a declared alice@<this daemon>" "yes" "$(cand alice)"
+# declared alice@d1, but the roster's alice is this daemon's own agent: not excused (another daemon's agent)
+decl alice@d1
+assert_eq "declared roster: a bare roster alice that resolves to this daemon's alice is NOT excused by alice@d1" "no" "$(cand alice)"
+# only one alice anywhere, on another daemon: the bare roster entry is that agent, so the declaration excuses it
+D_TEAM='{"team":{"members":[{"agent_id":"alice@d1","name":"alice","is_local":false}]}}'
+set_own dX
+decl alice@d1
+assert_eq "declared roster: a bare roster alice is excused by alice@d1 when alice is unique" "yes" "$(cand alice)"
+# an ambiguous declared entry excuses nothing and is reported
+D_TEAM='{"team":{"members":[{"agent_id":"alice@d1","name":"alice","is_local":false},{"agent_id":"alice@d2","name":"alice","is_local":false}]}}'
+decl alice
+assert_eq "declared roster: an ambiguous declared entry excuses nothing" "no" "$(cand alice@d1)"
+assert_eq "declared roster: the ambiguous declared entry is reported naming every candidate" "1" "$(grep -cF "ambiguous roster entry 'alice': candidates alice@d1 alice@d2" "$d5_dir/err")"
+decl alice@d2
+assert_eq "declared roster: control: the full ID of one of the two excuses that one" "yes" "$(cand alice@d2)"
+assert_eq "declared roster: control: it does not excuse the other one" "no" "$(cand alice@d1)"
+# is_local is the row's locality: a bare alice with is_local false is another daemon's agent, never qualified with this
+# daemon, so a declared alice@<this daemon> does not excuse it (control: is_local true does).
+set_own dL
+D_TEAM='{"team":{"members":[{"agent_id":"alice","name":"alice","is_local":false}]}}'
+decl alice@dL
+assert_eq "declared roster: a bare alice with is_local false is NOT excused by alice@<this daemon>" "no" "$(cand alice)"
+D_TEAM='{"team":{"members":[{"agent_id":"alice","name":"alice","is_local":true}]}}'
+assert_eq "declared roster: control: the same bare row with is_local true is excused" "yes" "$(cand alice)"
+D_TEAM='{"team":{"members":[{"agent_id":"alice","name":"alice"}]}}'
+assert_eq "declared roster: a bare row with no is_local key is local and excused" "yes" "$(cand alice)"
+# the daemon ID is read once however many entries are resolved
+set_own dL
+D_TEAM='{"team":{"members":[{"agent_id":"alice","name":"alice","is_local":true}]}}'
+: >"$d5_dir/wcalls"
+thrum() {
+  case "$1" in
+    team) printf '%s\n' "$D_TEAM" ;;
+    whoami) echo whoami >>"$d5_dir/wcalls"; printf '{"daemon_id":"%s"}\n' "$D_OWN" ;;
+    *) return 0 ;;
+  esac
+}
+decl alice@dL alice@dL
+is_declared_inactive alice >/dev/null 2>&1; is_declared_inactive alice >/dev/null 2>&1
+assert_eq "declared roster: whoami is read once for the whole run" "1" "$(wc -l <"$d5_dir/wcalls" | tr -d ' ')"
+thrum() {
+  case "$1" in
+    team) printf '%s\n' "$D_TEAM" ;;
+    whoami) [ -z "$D_OWN" ] || printf '{"agent_id":"x@%s","name":"x","daemon_id":"%s"}\n' "$D_OWN" "$D_OWN" ;;
+    *) return 0 ;;
+  esac
+}
+set_own ""
+D_TEAM='{"team":{"members":[]}}'
 rm -r -- "$d5_dir"
 trap - EXIT
 
@@ -332,7 +432,7 @@ trap - EXIT
   trap 'rm -r -- "$d6_dir" 2>/dev/null || true' EXIT
   thrum() {
     case "$1" in
-      tmux) echo "Error: tmux.capture: RPC error -32000: rpcrouter: local agent not found"; return 1 ;;
+      tmux) echo "capture $3" >>"$d6_dir/captures"; echo "Error: tmux.capture: RPC error -32000: rpcrouter: local agent not found"; return 1 ;;
       *) return 0 ;;
     esac
   }
@@ -358,6 +458,22 @@ trap - EXIT
   echo "declared_degraded=${DEGRADED[*]-}"
   echo "declared_list=${DECLARED_INACTIVE[*]-} captured=${#CAPTURED[@]}"
   echo "declared_marker=$(grep -c 'DECLARED INACTIVE' "${outdir}/declared.txt")"
+
+  # An ambiguous roster entry (found by roster_self_check) is skipped, not captured; the rest of the roster still is.
+  : >"$d6_dir/captures"
+  ROSTER=(alice ghost); ROSTER_HOSTNAME=("" ""); ROSTER_TMUX_SESSION=("" ""); ROSTER_RUNTIME=("" ""); ROSTER_DAEMON_OVERRIDE=("" "")
+  FAILED=(); DEGRADED=(); CAPTURED=(); DECLARED_INACTIVE=(); ROSTER_AMBIGUOUS=(alice)
+  run_capture_cycle "${outdir}/ambiguous.txt" cap3 ts3 >/dev/null 2>&1
+  echo "amb_captures=$(tr '\n' ',' <"$d6_dir/captures")"
+  echo "amb_failed=${FAILED[*]-}"
+  echo "amb_skipped=$(grep -c 'SKIPPED: ambiguous roster entry' "${outdir}/ambiguous.txt")"
+  # Control: the same roster with nothing marked ambiguous captures alice too.
+  : >"$d6_dir/captures"
+  FAILED=(); DEGRADED=(); CAPTURED=()
+  # shellcheck disable=SC2034 # read by is_ambiguous_entry in the sourced roster-watch.sh
+  ROSTER_AMBIGUOUS=()
+  run_capture_cycle "${outdir}/notambiguous.txt" cap4 ts4 >/dev/null 2>&1
+  echo "ctl_captures=$(tr '\n' ',' <"$d6_dir/captures")"
 ) > "${TMPDIR:-/tmp}/rw-cycle.$$" 2>&1
 d6_out="$(cat "${TMPDIR:-/tmp}/rw-cycle.$$")"; rm -f -- "${TMPDIR:-/tmp}/rw-cycle.$$"
 assert_eq "run_capture_cycle: fixture arrays are aligned (one member, no JEV)" "fixture=1/1/1/1/1 jev=0" "$(printf '%s\n' "$d6_out" | grep '^fixture=')"
@@ -366,6 +482,10 @@ assert_eq "run_capture_cycle: declared-inactive failing member is not FAILED" "d
 assert_eq "run_capture_cycle: declared-inactive failing member is not DEGRADED" "declared_degraded=" "$(printf '%s\n' "$d6_out" | grep '^declared_degraded=')"
 assert_eq "run_capture_cycle: declared-inactive member captured nothing" "declared_list=ghost captured=0" "$(printf '%s\n' "$d6_out" | grep '^declared_list=')"
 assert_eq "run_capture_cycle: declared-inactive member is noted in the capture file" "declared_marker=1" "$(printf '%s\n' "$d6_out" | grep '^declared_marker=')"
+assert_eq "run_capture_cycle: an ambiguous entry is not captured (only ghost is)" "amb_captures=capture ghost," "$(printf '%s\n' "$d6_out" | grep '^amb_captures=')"
+assert_eq "run_capture_cycle: the skipped ambiguous entry is not a FAILED capture" "amb_failed=ghost" "$(printf '%s\n' "$d6_out" | grep '^amb_failed=')"
+assert_eq "run_capture_cycle: the skipped entry is noted in the capture file" "amb_skipped=1" "$(printf '%s\n' "$d6_out" | grep '^amb_skipped=')"
+assert_eq "run_capture_cycle: control: with nothing ambiguous alice is captured too" "ctl_captures=capture alice,capture ghost," "$(printf '%s\n' "$d6_out" | grep '^ctl_captures=')"
 
 # ---------------------------------------------------------------------------
 echo "----------------------------------------"

@@ -539,12 +539,13 @@ After resolution, continue the merge loop.
 
 After all epic merges and conflict edits, run the project's required gate, build
 and test commands on the final HEAD (the `per_landing` commands in
-`.thrum/gate-config.json`, or the project's documented test command if that file
-is absent). Record the SHA you checked and each command's outcome. Push only if
-every required check passed; a failed or incomplete check stops the push. If you
-edit anything after the check, re-run it on the resulting HEAD before pushing. A
-gate run that already covers this exact SHA and the same checks satisfies this.
-Keep the per-branch checks; this adds no new whole-tree gate.
+`.thrum/policy/gates.json`, or the project's documented test command if that
+file is absent). Record the SHA you checked and each command's outcome. Push
+only if every required check passed; a failed or incomplete check stops the
+push. If you edit anything after the check, re-run it on the resulting HEAD
+before pushing. A gate run that already covers this exact SHA and the same
+checks satisfies this. Keep the per-branch checks; this adds no new whole-tree
+gate.
 
 ```bash
 git push origin <merge-target>
@@ -672,7 +673,11 @@ cmp -s /tmp/x /tmp/x;           echo "rc=$? (must be 0 — proves cmp CAN affirm
 
 ```bash
 # Remove the worktree (never rm -rf) — only after BOTH checks are clean and
-# the copies are cmp-verified
+# the copies are cmp-verified. Teardown refuses a LIVE worktree, so stop the
+# agent first, in this order:
+thrum tmux kill <session>                      # kill tmux + runtime first
+tmux list-sessions                             # verify the session is gone
+thrum agent set-phase retired --agent <name>   # keeps the registry row
 thrum worktree teardown <name>
 ```
 

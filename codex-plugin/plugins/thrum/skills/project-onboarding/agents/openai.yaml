@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Onboarding"
+  short_description: "Use when an owner wants to set up Thrum for a repository from scratch, resume an interrupted setup, or re-run the parts that went stale - the security model, engineering rules, coupling rules, merge gates, periodic checks and the coordinator, all in one guided run. Offers each part in order, lets the owner skip any part and come back to it, and undoes what it installed on request."
+  default_prompt: "Use when an owner wants to set up Thrum for a repository from scratch, resume an interrupted setup, or re-run the parts that went stale - the security model, engineering rules, coupling rules, merge gates, periodic checks and the coordinator, all in one guided run. Offers each part in order, lets the owner skip any part and come back to it, and undoes what it installed on request."

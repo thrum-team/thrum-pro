@@ -6,13 +6,78 @@ description:
   gate - and when a coordinator is about to run git merge on any new feature or
   large bug fix after dual review came back clean. Loads the gate-runner restart
   rule (restart at ~50 percent, at a seam BETWEEN gates) plus the FULL
-  .thrum/philosophy.md anti-pattern list and red-flags checklist, walked as a
-  distinct pass rather than folded into the dual review. NEVER skipped except
-  for a one-line config change, a typo, or a test-only diff."
+  .thrum/policy/philosophy.md anti-pattern list and red-flags checklist, walked
+  as a distinct pass rather than folded into the dual review. NEVER skipped
+  except for a one-line config change, a typo, or a test-only diff."
 # source: claude-plugin/skills/coordinator-philosophy-merge-gate/SKILL.md
 ---
 
 ## Coordinator: Philosophy Merge Gate
+
+### Missing policy files
+
+This skill reads these policy files, which other skills write:
+
+| File                          | Written by           | Step that stops                                   |
+| ----------------------------- | -------------------- | ------------------------------------------------- |
+| `.thrum/policy/philosophy.md` | `project-philosophy` | Walk 1 and the red-flags pass                     |
+| `.thrum/policy/gates.json`    | `onboarding-gates`   | the sharded-runner check and the verdict-log line |
+
+A key this skill gives a default for, such as `verdict_log`, is not a miss.
+
+<!-- onboarding:alert -->
+
+**Missing policy.** Do this before you read a policy file, and again whenever a
+step needs a key from one.
+
+1. Check that the file exists and has the key you need. A file that exists but
+   lacks the key is a miss. A file whose writing section
+   `.thrum/policy/onboarding.json` records as `undone` is a miss although the
+   file is kept.
+2. On a miss, when the owner is present, first say this, with `<part>` the part
+   that writes the file, in plain words:
+
+   <!-- markdownlint-disable MD013 -->
+
+   > Say: I can't do this step yet: <file> is missing because the <part> has not
+   > been set up. Run <skill> to add it.
+
+   <!-- markdownlint-enable MD013 -->
+
+   Then print
+   `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (written by <skill>); run <skill>`.
+   `<skill>` is the name of the skill that writes the file (for example
+   `onboarding-gates`), never a section label. Leave out `[key <k>]` when the
+   whole file is missing.
+
+3. Message the coordinator with that line, unless you are the coordinator.
+4. Stop the step that needs the file. Never continue with defaults. Never take
+   the value from another record instead: `onboarding.json`'s `answers`, an
+   earlier verdict, or what you remember of the file. Those record what was
+   decided; only the file is the setting.
+5. If `.thrum/policy/onboarding.json` records the section that writes the file
+   as `skipped`, word the notice by its `reason`. It still stops:
+   - `owner`:
+     `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (owner-declined); run <skill> to add it`
+   - `profile`:
+     `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (skipped for the Solo profile; run <skill> to add it)`
+
+   A section recorded `undone` gets the plain wording from step 2.
+
+6. Check `reported` in `.thrum/policy/onboarding.json` first, and send a given
+signature once: `missing:<file>` or `missing:<file>:<k>`, or
+`skipped:<skill>:<reason>` when step 5 applies. After you send it, add it to
+`reported`. If `onboarding.json` does not exist, treat `reported` as empty and
+no section as skipped.
+<!-- /onboarding:alert -->
+
+### Lens tier — check first
+
+Read `tiers.philosophy_lens` in `.thrum/policy/gates.json` before you read
+`philosophy.md`. When it is `false`, print
+`philosophy lens is off in .thrum/policy/gates.json; run onboarding-gates to turn it on`
+and stop, without the ONBOARDING MISSING line. A missing `tiers` key is a miss:
+run the alert above, naming `onboarding-gates`.
 
 ### Before you start this gate — restart if you cannot finish it
 
@@ -47,7 +112,7 @@ carried forward from earlier in the session is a memory, not a measurement.
 ### Why this is a separate pass, not a dual-review finding class
 
 `code-review` and `verify-against-plan` are general-purpose passes — correctness
-and spec-compliance. The anti-patterns in `.thrum/philosophy.md` are
+and spec-compliance. The anti-patterns in `.thrum/policy/philosophy.md` are
 project-specific structural rules that require a different lens: not "is this
 code correct?" but "does this diff introduce a pattern the project has
 explicitly ruled out?" Folding these into dual review dilutes both the general
@@ -72,12 +137,12 @@ explicitly in the merge record so the gap is visible rather than invisible.
 
 **Verdicts are one log line:** the runner appends ONE line (date, gate,
 candidate SHA, target SHA, verdict, one short reason) to the verdict log and
-commits it. The log path is `verdict_log` in `.thrum/gate-config.json` (resolved
-through `.thrum/redirect` from a worktree), default `docs/gate-log.md` when the
-key is absent. That line is the only record a gate keeps; the verdict itself
-travels in the report message. Never commit per-gate report directories, logs,
-archives or evidence (owner ruling 2026-10-17: once a gate has decided and the
-candidate is landed or rejected, its output is deleted).
+commits it. The log path is `verdict_log` in `.thrum/policy/gates.json`
+(resolved through `.thrum/redirect` from a worktree), default `docs/gate-log.md`
+when the key is absent. That line is the only record a gate keeps; the verdict
+itself travels in the report message. Never commit per-gate report directories,
+logs, archives or evidence (owner ruling 2026-10-17: once a gate has decided and
+the candidate is landed or rejected, its output is deleted).
 
 ### Gate dispatch preamble
 
@@ -99,14 +164,20 @@ dispatch time — hand this list verbatim:
    fast-forward check) — git silently deduplicates content-identical commits on
    both sides of a rebase, so a tree that "builds clean" can still be carrying
    dupes instead of the real content.
-6. Run full-package `-race`, not targeted `-run` — a targeted race run misses
-   cross-test races that only a full-package run surfaces. **Exception: a
-   package your project marks as too slow to run monolithically** (see item 7 of
-   `coordinator-hotpath-merge-gate`) is run through the sharded runner or
-   timeout classifier that `.thrum/gate-config.json` names, and the gate's
-   output must show it executed. A bound-timeout with ZERO test failures is a
-   false red: classify it before reporting a regression, and treat a hang or
-   unclassified result as needing human review.
+6. Run the per-landing race the project's policy sets: read `per_landing_race`
+   from `.thrum/policy/gates.json`. `full` runs full-package `-race` on each
+   changed package, not a targeted `-run`, because a targeted run misses
+   cross-test races that only a full-package run surfaces. `concurrency_only`
+   races the change's own tests, only for a concurrency change, and leaves
+   cross-test races to the batch race every `batch.every_n_landings` landings.
+   `none` runs no race per landing. A missing file or key is a miss: run the
+   alert. **Exception: a package your project marks as too slow to run
+   monolithically** (see item 7 of `coordinator-hotpath-merge-gate`) is run
+   through the sharded runner or timeout classifier that
+   `.thrum/policy/gates.json` names, and the gate's output must show it
+   executed. A bound-timeout with ZERO test failures is a false red: classify it
+   before reporting a regression, and treat a hang or unclassified result as
+   needing human review.
 7. Build+test the MERGED-tree result as a SEPARATE condition — neither gate
    currently runs a build of the actual post-merge tree; a clean pre-merge
    build/test does not prove the merged result compiles or passes. 7b. **GATE ON
@@ -173,12 +244,14 @@ dispatch time — hand this list verbatim:
 
 ### Walk 1 — The project's ruled-out anti-patterns
 
-**Walk the anti-patterns in `.thrum/philosophy.md` at gate time, in file order,
-however many there are.** That file is the source of truth; this skill reprints
-none of it, so an anti-pattern added or retired there needs no edit here.
+**Walk the anti-patterns in `.thrum/policy/philosophy.md` at gate time, in file
+order, however many there are.** That file is the source of truth; this skill
+reprints none of it, so an anti-pattern added or retired there needs no edit
+here.
 
-Read § Anti-Patterns via `git show <target-sha>:.thrum/philosophy.md` (preamble
-rule 1 — never the working tree). For each `### N. <title>` entry, in order:
+Read § Anti-Patterns via `git show <target-sha>:.thrum/policy/philosophy.md`
+(preamble rule 1 — never the working tree). For each `### N. <title>` entry, in
+order:
 
 1. Read its BAD / GOOD shape and **Why** — the BAD block is the pattern to check
    for.
@@ -192,10 +265,12 @@ rule 1 — never the working tree). For each `### N. <title>` entry, in order:
 4. Record an inapplicable entry as walked-and-N/A with a one-line reason — never
    a silent skip.
 
-A gate finding with no failing test or reproduction can never block. Label it
-UNMEASURED, state the likely cost, and name the test that would prove it. The
-coordinator forwards it only if the fix is clearly worth the cost, never as a
-'real risk', and the owner can decline it.
+A gate finding with no failing test or reproduction: Label it UNMEASURED, state
+the likely cost, and name the test that would prove it. It blocks only when
+`policy.unmeasured_findings_block` in `.thrum/policy/gates.json` is `true`;
+thrum's own value is `false`, so it never blocks. A missing file or key is a
+miss: run the alert. The coordinator forwards it only if the fix is clearly
+worth the cost, never as a 'real risk', and the owner can decline it.
 
 Cite an anti-pattern finding as `ph<N>` (matching the gate-log `lens=` token);
 cite a meta-check finding (below) as `ph-metaA` / `ph-metaB` / `ph-metaC`.
@@ -372,16 +447,16 @@ findings is one reviewers learn to discount.
 
 ### Red-flags checklist pass
 
-After the anti-pattern walk, scan the diff against `.thrum/philosophy.md` § Red
-Flags via `git show <target-sha>:.thrum/philosophy.md` — not a copy here. Any
-hit on new code the branch introduces is a gate fail. Red flags marked
+After the anti-pattern walk, scan the diff against `.thrum/policy/philosophy.md`
+§ Red Flags via `git show <target-sha>:.thrum/policy/philosophy.md` — not a copy
+here. Any hit on new code the branch introduces is a gate fail. Red flags marked
 **MANDATORY on every merge, no scope exemption** are checked on every diff
 whatever it appears to touch.
 
-Two red-flag-grade checks are not in `.thrum/philosophy.md` — they are above as
-**Meta-check B** (a shipped command / lookup-key never executed against a real
-target) and **Meta-check C** (a totality / completeness / safety / scope claim
-never enumerated with a controlled-zero check). Include both.
+Two red-flag-grade checks are not in `.thrum/policy/philosophy.md` — they are
+above as **Meta-check B** (a shipped command / lookup-key never executed against
+a real target) and **Meta-check C** (a totality / completeness / safety / scope
+claim never enumerated with a controlled-zero check). Include both.
 
 ### Scope discipline (gate-wide)
 
@@ -457,8 +532,8 @@ coordinator with the exact diff — don't bounce reflexively.
 
 ### Reference
 
-- `.thrum/philosophy.md` — canonical source for all anti-patterns and red flags
-  checked by this gate
+- `.thrum/policy/philosophy.md` — canonical source for all anti-patterns and red
+  flags checked by this gate
 - the single-responsibility decision record — full standing rule with the
   three-class scope model, enforcement architecture (3a/3b/3c/3d), and worked
   examples of previously-traced conflated services

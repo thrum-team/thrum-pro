@@ -123,7 +123,8 @@ as clean.
 #### Third comparison unit: Primitive Ledger (required when hot-root I/O/SQL is present)
 
 For every I/O or SQL operation the code side introduces under a hot root
-(`Handle*`/tick/sweeper/`SyncApplier`/boot — see `.thrum/hotpath-gate.json`'s
+(`Handle*`/tick/sweeper/`SyncApplier`/boot — see
+`.thrum/policy/hotpath-gate.json`'s
 `lenses.existing_primitive_bypass.hot_root_indicators`), treat the implementer's
 Primitive Ledger row itself as a requirement to be verified, exactly like the
 field/struct/column checks above: raw op -> callee package searched -> primitive
