@@ -51,9 +51,10 @@ A free-text question is one pick too: its first button is the text you propose,
 marked as recommended, and the note takes different text. The accept-all pick
 has the one button.
 
-Put the question's `Why:` line under the question in the pick's prompt. "Explain
-<n>", the say-back before writing and an answer of "I do not know" are handled
-in the terminal, as `resources/question-blocks.md` says.
+Put the question's `Why:` line under the question in the pick's prompt. Start
+that line with the word "Why:", as in the terminal form. "Explain <n>", the
+say-back before writing and an answer of "I do not know" are handled in the
+terminal, as `resources/question-blocks.md` says.
 
 The first pick on the board is "Accept every recommendation in this block".
 
@@ -83,6 +84,9 @@ After publishing a block, say this, then end the turn:
 
 Each answer arrives as a message that wakes you. Then read
 `thrum dashboard results`.
+
+Record every answer read from the board in answers_source: the recommended
+button is accepted, any other button or a note is chosen.
 
 A block is settled when "Accept every recommendation in this block" is picked or
 every question has an answer. Accepting all applies only to the questions with
@@ -142,7 +146,7 @@ pick-one and one pick-several. Publish a board of this shape with
       "id": "onb-security-1-depth",
       "type": "action-pick",
       "question_id": "onb-security-1-depth",
-      "prompt": "1. How deep should the security model go? (pick one)",
+      "prompt": "1. How deep should the security model go? (pick one)\nWhy: A deeper model costs more to write and to keep current.",
       "options": [
         { "id": "standard", "label": "Standard (recommended)" },
         { "id": "brief", "label": "Brief" },
@@ -156,7 +160,7 @@ pick-one and one pick-several. Publish a board of this shape with
       "id": "onb-security-1-actors",
       "type": "action-pick",
       "question_id": "onb-security-1-actors",
-      "prompt": "2. Which of these should agents defend against? (pick several)",
+      "prompt": "2. Which of these should agents defend against? (pick several)\nWhy: Each actor you pick adds guards that cost work to maintain.",
       "options": [
         {
           "id": "recommended-set",

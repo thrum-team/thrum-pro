@@ -119,6 +119,13 @@ questions.
 Run each shell command on its own: no ;, &&, loop, heredoc, xargs or $( ). Run git without -C, from the repository
 folder. Read and write files with your file tools, not with shell commands.
 
+Ask every question as plain text in your reply and wait for the answer. Never use a question tool.
+
+Never name a rule or step number from these skills to the owner (such as "Rule 6"): say what you are doing instead.
+
+Say every line marked > Say: or > Ask: to the owner word for word,
+filling in only its <placeholders>. Never paraphrase one or leave one out.
+
 ## Rule 5: Owned blocks
 
 Where a skill shares a file with another skill or with the owner, it owns only a block between

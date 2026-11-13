@@ -66,6 +66,9 @@ them. Use the pass's ready-made pattern line exactly as written.
 For each matching commit read the subject, the first 20 lines of the body and
 the paths it touched. Read nothing else.
 
+Read each matching commit with git show -s --format=%B <sha>, one commit per
+command. A list of subjects is not a read.
+
 ## What counts as a finding
 
 An area is a file, or the directory a file sits in. The repository root is never

@@ -53,5 +53,6 @@ with `thrum peer list` and confirm by effect on the target pane.
 remote daemon for a peer send), for example `Keys sent to s:0.0 on d_abc: 1 (pane changed)`. Exit 0: sent (pane changed,
 or the effect could not be verified; an older remote daemon prints `not verified (remote daemon older)`). Exit 5: the
 executing daemon captured the pane before and after and it did not change, so there is no evidence the keys took effect;
-a key that legitimately changes nothing also exits 5, so best-effort callers may ignore it. Exit 1: any other error,
-including a registered agent whose tmux session is absent on the executing daemon (nothing is sent).
+a key that legitimately changes nothing also exits 5, so best-effort callers may ignore it. `pane changed` is evidence of
+a repaint, not proof the key was consumed: a self-repainting pane such as a spinner also reads changed. Exit 1: any
+other error, including a registered agent whose tmux session is absent on the executing daemon (nothing is sent).

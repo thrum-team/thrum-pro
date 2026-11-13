@@ -384,9 +384,11 @@ record brought in.
 
 Before any command runs, show this line once:
 
-> Say: Next I run each of these commands once to check that it works. Some may
-> be slow. Tell me any you want to skip; a skipped one is recorded as not
-> validated.
+> Ask: Next I run each of these commands once to check that it works:
+> <commands>. Some may be slow. Say "ok" to run them all, or name any to skip; a
+> skipped one is recorded as not validated.
+
+Wait for the answer before any command runs.
 
 A command the owner skips is not run, and it is appended to
 `answers.unvalidated_commands` (defined in `resources/onboarding-schema.md` of

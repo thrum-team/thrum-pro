@@ -8,6 +8,8 @@ Never ask a run of related questions one at a time. Ask them as a block.
 
 Write a block as plain text in your reply and wait for the owner's answer.
 
+Show one block, then end your turn. Never show two blocks, or a question and a block, in one reply.
+
 Do not use a question tool for a block: the tools differ between runtimes, some drop options, and an open question
 can hold incoming messages.
 
@@ -58,6 +60,8 @@ Any other reply is read row by row.
 "Explain <n>" gets a plain explanation of that row, and then the block is asked again.
 
 A row the reply does not settle is asked again on its own; it is never taken as accepted.
+
+A value that is not one of the row's Choices is not an answer: show that row's choices again and ask. Never drop a row.
 
 Before writing, say back each answer that is not the recommendation, and wait for the owner to confirm.
 
