@@ -117,6 +117,10 @@ Block 1 of 1: Questions the graph cannot answer
 Reply "yes to all", tell me what to change (for example "4: 10 minutes"), say "not sure about 3", or ask "explain 3".
 ```
 
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: coupling_repo_root,
+coupling_shared_resources, coupling_hidden_programs, coupling_lane_limit.
+
 ### Step 4: Keep-separate rules
 
 Offer one candidate rule for each loop, outlier and invisible coupling the
@@ -124,6 +128,9 @@ report found, as one pick-several row of a block in the
 `resources/question-blocks.md` form. Its Choices line lists the candidates, and
 the candidates the report supports are the Recommended set. Do not add a rule
 the owner did not pick.
+
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: coupling_keep_separate.
 
 In stealth mode, leave out the words about being committed with your code from
 every notice.

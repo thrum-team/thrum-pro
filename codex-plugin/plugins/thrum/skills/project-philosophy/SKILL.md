@@ -147,8 +147,9 @@ find . -type f \( -name "*philosophy*" -o -name "*anti-pattern*" -o -name "*impl
 Common legacy locations: `dev-docs/implementation-philosophy.md` and
 `docs/anti-patterns.md`.
 
-If CONTRIBUTING.md exists at the repository root and has a heading that names
-anti-patterns, offer to link it or to start fresh. Never offer to move it.
+Then read CONTRIBUTING.md at the repository root, if there is one: the find
+above does not match it. If it has a heading that names anti-patterns, it is a
+candidate: offer to link it or to start fresh. Never offer to move it.
 
 If zero candidates: fall through to First-run. If one or more candidates:
 present the choice.
@@ -189,6 +190,9 @@ Block 1 of 1: Existing philosophy document
 
 Reply "yes to all", tell me what to change (for example "1: Fresh"), say "not sure about 1", or ask "explain 1".
 ```
+
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: philosophy_existing_doc.
 
 When the candidate is CONTRIBUTING.md, the choices are Link / Fresh only. Leave
 Move out of the row.
@@ -337,6 +341,11 @@ Block 1 of 1: Rules for your repository
 
 Reply "yes to all", tell me what to change (for example "2: legacy handlers"), say "not sure about 3", or ask "explain 3".
 ```
+
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: philosophy_mistakes,
+philosophy_burn_down, philosophy_red_flags, philosophy_release,
+philosophy_dependencies.
 
 Write the answer to the burn-down row to `answers.burn_down`. A row the
 repository gives no evidence for takes the fallback line from

@@ -192,6 +192,10 @@ Block 1 of 2: What the gate runs
 Reply "yes to all", tell me what to change (for example "1: make test"), say "not sure about 1", or ask "explain 1".
 ```
 
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: gate_setup_required_test,
+gate_setup_race_lane, gate_setup_never_monolithic, gate_setup_parallel.
+
 ```text
 Block 2 of 2: Files, checks and records
 
@@ -215,6 +219,11 @@ Block 2 of 2: Files, checks and records
 
 Reply "yes to all", tell me what to change (for example "4: logs/gates.md"), say "not sure about 4", or ask "explain 4".
 ```
+
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: gate_setup_generated_files,
+gate_setup_write_targets, gate_setup_structural_checks, gate_setup_verdict_log,
+gate_setup_retention.
 
 A ratchet brought in from the repository keeps the owner's own ceiling file as
 its `baseline_file`. Do not ask about that file and do not add it to

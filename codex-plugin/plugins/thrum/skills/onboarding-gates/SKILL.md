@@ -123,6 +123,8 @@ Read `profile` in `.thrum/policy/onboarding.json`. Under `profile: solo`:
   `pending` ratchet record. A writer that has nothing to write leaves `[]`, so
   these lists are never absent.
 
+A Solo row uses the key of the same setting in Steps 1, 3 and 4.
+
 Every key is still written, so no later step meets a missing key.
 
 ### Step 1: Tiers
@@ -176,6 +178,11 @@ Block 1 of 3: Tiers
 Reply "yes to all", tell me what to change (for example "3: no"), say "not sure about 3", or ask "explain 3".
 ```
 
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: gates_race_lane,
+gates_batch_race, gates_daily_full, gates_philosophy_lens, gates_hotpath_lens,
+gates_ratchets.
+
 The batch-race row sets whether Step 4 shows the batch rows. On `no`, Step 4
 skips the batch rows and writes `batch.every_n_landings: 0`, `batch.cmd: ""` and
 `batch.required_for_deploy: false`. On `yes`, Step 4 asks how many landings,
@@ -224,6 +231,10 @@ Block 2 of 3: Who lands changes
 
 Reply "yes to all", tell me what to change (for example "2: a gate agent"), say "not sure about 2", or ask "explain 2".
 ```
+
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: gates_merger, gates_runner,
+gates_box.
 
 Show the matching "In plain terms:" lines (topology, merge king, gate box) above
 the rows that first use them. Write `answers.topology`.
@@ -287,6 +298,11 @@ Block 3 of 3: Defaults
 
 Reply "yes to all", tell me what to change (for example "2: 10"), say "not sure about 2", or ask "explain 2".
 ```
+
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: gates_per_landing_race,
+gates_batch_every, gates_deploy_needs_batch, gates_evidence,
+gates_unmeasured_block.
 
 | Default                                                                                 | Reason                                 | Key                                       |
 | --------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------- |

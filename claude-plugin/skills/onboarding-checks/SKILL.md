@@ -82,6 +82,8 @@ terms:" line where it uses a term above. With little history, the cadence rule a
 
 Each row has a plain label, its value and its reason. Never show a raw key as a row's name.
 
+A Solo row uses the same keys.
+
 Then ask once:
 
 > Ask: These are the recommended check settings for a solo setup. Use them as they are, or review each one?
@@ -95,6 +97,10 @@ Ask the settings in the table above as one block, following `resources/question-
 row has a plain label, never the raw key, and its offered value is the Recommended answer: the prefixes, the two size
 thresholds, the stalled time, the cadence (Why: the suggestion and its basis) and the delivery (Why: what `auto` does
 today). The owner keeps or changes each row.
+
+Record how each answer was given in answers_source, and a note the owner added in answers_notes, under these keys, in
+row order: checks_branch_globs, checks_size_threshold, checks_stalled_hours, checks_cadence_hours, checks_delivery.
+The two size thresholds are one row.
 
 When the history read was skipped or found nothing,
 put the History: line under every fallback line, as question-blocks.md says.

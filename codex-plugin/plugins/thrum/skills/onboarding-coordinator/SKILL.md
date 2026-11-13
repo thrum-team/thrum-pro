@@ -201,6 +201,11 @@ block:
   with Recommended: install Thrum's too, and the fallback line as its Why: "No
   evidence in this repository; this is Thrum's default."
 
+Record how each answer was given in answers*source, and a note the owner added
+in answers_notes, under these keys, in row order: coordinator_cadence,
+coordinator_reminder_cadence, coordinator_dashboard when that row is shown, and
+coordinator_monitor*<job> for each monitor row.
+
 Each asked term gets its "In plain terms:" line first.
 
 ### Step 2: Monitors

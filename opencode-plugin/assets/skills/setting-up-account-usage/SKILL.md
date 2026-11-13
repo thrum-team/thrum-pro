@@ -47,12 +47,13 @@ start; a list of only unknown names reads nothing.
 
 ## 4. Credentials: on macOS the user takes part (tell them before step 2)
 
-quota-axi never logs in and never refreshes a credential for the daemon (the daemon passes `--no-credential-refresh`,
-never `--allow-keychain-prompt`, and the child sees only `HOME` and `PATH`). On macOS, tell the user up front which of
-their chosen runtimes will raise a Keychain prompt (table below) and that they approve it themselves in their own
-terminal; do not try to do it unattended. Each chosen runtime must already be signed in, with its credential in the
-default location under the user's `HOME`; a credential supplied only through an environment variable or a non-default
-path is not seen by the daemon.
+quota-axi never logs in and never refreshes a credential for the daemon (the daemon passes `--no-credential-refresh`
+and `--full`, which adds the account id so a reading lands on its account; the email and organization are never read.
+It never passes `--allow-keychain-prompt`, and the child sees only `HOME` and `PATH`). On macOS, tell the user up
+front which of their chosen runtimes will raise a Keychain prompt (table below) and that they approve it themselves in
+their own terminal; do not try to do it unattended. Each chosen runtime must already be signed in, with its credential
+in the default location under the user's `HOME`; a credential supplied only through an environment variable or a
+non-default path is not seen by the daemon.
 
 | Runtime | macOS | Linux (read from files, nothing to approve) |
 |---|---|---|
@@ -76,8 +77,8 @@ signed in. Not confirmed on a real account: whether every file above exists for 
 ## 5. Turn it on
 
 Edit `.thrum/config.json` of the repo the daemon serves (from a worktree, the main repo's `.thrum`, named in
-`.thrum/redirect`). `thrum config set` refuses these two keys (per-machine settings, not fleet-settable), so edit the
-file.
+`.thrum/redirect`). Both keys are risky settings: `thrum config set daemon.account_usage_quota_axi true --force`
+works (then restart), and editing the file by hand is the alternative.
 
 ```json
 { "daemon": { "account_usage_quota_axi": true, "account_usage_runtimes": ["claude", "codex"] } }

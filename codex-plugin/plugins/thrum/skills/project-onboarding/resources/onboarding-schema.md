@@ -104,7 +104,7 @@ Four keys record how the interview ran.
   and the recommendation was used. A key may name a row that has no answers key,
   such as `security_actor_<slug>`.
 - `answers_notes`: answer key → the note the owner added to that row. A key with
-  no note is absent.
+  no note is absent. Each part's skill names its keys.
 - `answers.interview_channel`: `terminal` or `dashboard`. Absent reads as
   `terminal`.
 - `answers.unvalidated_commands`: a list of commands whose validation run the

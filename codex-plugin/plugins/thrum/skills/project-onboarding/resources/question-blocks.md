@@ -117,6 +117,15 @@ Record each answer in `answers_source` as `chosen`, `accepted` or `unsure`, as
 `resources/onboarding-schema.md` says. A recommendation taken by name or by "yes
 to all" is `accepted`.
 
+The key for a row, in answers*source and in answers_notes, is the one its part's
+skill names for that row. When one row is shown as several and its key has no
+<n> or <job> in it, add *<n> to its key. Never write an answer's source or an
+owner's note under any other field.
+
+A found-item row (bring in / leave) has no key here: its answer is its
+answers.inventory decision. A row its part names no key for is recorded in
+neither.
+
 On a re-run, a question that already has an answer recommends that answer, as
 "keep: <answer>". When the evidence now points to a different answer, show both.
 
