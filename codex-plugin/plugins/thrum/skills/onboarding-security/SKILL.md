@@ -243,8 +243,8 @@ Reply "yes to all", tell me what to change (for example "1: do not defend"), say
 > users, when the tool only ever runs on your own machine), and that is written
 > down as your decision.
 
-Record how each answer was given in answers*source: security_depth, and
-security_actor*<slug> for each actor, where <slug> is the actor in lowercase
+Record how each answer was given in answers_source: security_depth, and
+security_actor_<slug> for each actor, where <slug> is the actor in lowercase
 words joined by hyphens.
 
 If a found security note names a non-goal, offer it here as the answer to be

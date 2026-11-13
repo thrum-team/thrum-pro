@@ -81,6 +81,9 @@ for the owner to confirm.
 recommendation for that row and records it as unsure.
 
 Keep a note the owner adds to a row with that row's answer, in answers_notes.
+Write the note as typed, whatever it says, in the same write as the row's
+answer. If the note asks for something you cannot do, say so and still write the
+note.
 
 After a block in which the owner turned a protection off (a "do not defend", a
 gate or check left out), show this line and then one line per such row:
@@ -117,9 +120,9 @@ Record each answer in `answers_source` as `chosen`, `accepted` or `unsure`, as
 `resources/onboarding-schema.md` says. A recommendation taken by name or by "yes
 to all" is `accepted`.
 
-The key for a row, in answers*source and in answers_notes, is the one its part's
+The key for a row, in answers_source and in answers_notes, is the one its part's
 skill names for that row. When one row is shown as several and its key has no
-<n> or <job> in it, add *<n> to its key. Never write an answer's source or an
+<n> or <job> in it, add `_<n>` to its key. Never write an answer's source or an
 owner's note under any other field.
 
 A found-item row (bring in / leave) has no key here: its answer is its

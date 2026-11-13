@@ -250,8 +250,8 @@ Block 1 of 1: What has bitten you before
 Reply "yes to all", tell me what to change (for example "1: change it"), say "not sure about 1", or ask "explain 1".
 ```
 
-Record how each answer was given in answers*source, and a note the owner added
-in answers_notes, under these keys, in row order: hotpath_note*<n>, one for each
+Record how each answer was given in answers_source, and a note the owner added
+in answers_notes, under these keys, in row order: hotpath_note_<n>, one for each
 note row.
 
 The accepted notes become the `context` prose fields in the config. A lens with

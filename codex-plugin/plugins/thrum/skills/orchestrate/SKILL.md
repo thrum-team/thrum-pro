@@ -860,14 +860,14 @@ fresh ephemeral identity under a NEW name in the SAME worktree, pinned on both
 create and launch from `runtime.role_models` (per `choosing-subagent-models`).
 `--intent` carries the orient-from-WIP one-liner. thrum tmux create
 <same_worktree_name> --cwd <worktree-path> --name <new_agent_name> --role
-implementer --module <module> --mode ephemeral --identity ephemeral --model
-<per runtime.role_models> --effort <per runtime.role_models> --intent
-"tier-swap: orient in the worktree (WIP + first-review findings) and continue"
-thrum tmux launch <same_worktree_name> --runtime claude --model
-<per runtime.role_models> --effort <per runtime.role_models> Step 5: deliver the
-WIP pointer and first-review findings (a cold handoff: the code plus the
-findings). thrum send --to @<new_agent_name> --stdin <<'EOF' Tier-swap pickup:
-<WIP summary + first-review findings> EOF
+implementer --module <module> --mode ephemeral --identity ephemeral --model <per
+runtime.role_models> --effort <per runtime.role_models> --intent "tier-swap:
+orient in the worktree (WIP + first-review findings) and continue" thrum tmux
+launch <same_worktree_name> --runtime claude --model <per runtime.role_models>
+--effort <per runtime.role_models> Step 5: deliver the WIP pointer and
+first-review findings (a cold handoff: the code plus the findings). thrum send
+--to @<new_agent_name> --stdin <<'EOF' Tier-swap pickup: <WIP summary +
+first-review findings> EOF
 
 The pickup prompt (Step 5) must include: You are picking up in-progress work
 from a prior agent that was replaced. Context:

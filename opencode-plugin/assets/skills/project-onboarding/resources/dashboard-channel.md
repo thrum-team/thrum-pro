@@ -65,6 +65,7 @@ Each answer arrives as a message that wakes you. Then read `thrum dashboard resu
 
 Record every answer read from the board in answers_source:
 the recommended button is accepted, any other button or a note is chosen.
+Text the owner typed beside a button is that row's note.
 
 A block is settled when "Accept every recommendation in this block" is picked or every question has an answer.
 Accepting all applies only to the questions with no answer of their own.
