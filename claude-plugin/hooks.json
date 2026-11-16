@@ -1,12 +1,5 @@
 {
   "thrum": {
-    "SessionStart": [
-      {
-        "type": "command",
-        "command": "./scripts/agy-session-start.sh",
-        "timeout": 15
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "*",

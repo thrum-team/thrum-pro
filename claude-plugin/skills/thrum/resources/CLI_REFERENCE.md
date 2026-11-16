@@ -578,7 +578,7 @@ plugin already injects equivalent content via its SessionStart hook.
 ## Sync
 
 ```bash
-thrum sync force                               # Force immediate sync (non-blocking)
+thrum sync force                               # Force immediate sync (waits for the push to land or fail)
 thrum sync status                              # Show sync status, last sync time, errors
 thrum sync status --json
 ```

@@ -56,10 +56,11 @@ action more concretely.
 
 ## Steps for one entry
 
-Use the helper for steps 1 to 5. Run it from any directory with `THRUM_REPO=<repo>` set to the thrum repo root (the
-helper runs thrum from there). It extracts the body, creates or reuses the record, checks it byte for byte, writes
-`thrum_memory` into the frontmatter, and prints the ID. It exits non-zero on any problem, and then you leave that index
-line alone.
+Use the helper for steps 1 to 5. Run it from your own worktree with `THRUM_REPO=<repo>` set to the thrum repo root.
+The helper runs thrum from the directory you start it in, because thrum reads your identity from the current
+directory, and uses `THRUM_REPO` only when that directory is not inside a thrum repo. It extracts the body, creates
+or reuses the record, checks it byte for byte, writes `thrum_memory` into the frontmatter, and prints the ID. It exits
+non-zero on any problem, and then you leave that index line alone.
 
 ```bash
 bash <skill-dir>/resources/to-thrum.sh <topic-file.md> "<trigger>" [agent_rule|lesson] --personal

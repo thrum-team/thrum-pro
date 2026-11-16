@@ -68,13 +68,15 @@ alive or dead.
 └───────────────────────────────────────────────────────────────────────┘
               ▼
 ┌─ done ───────────────────────────────────────────────────────────────┐
-│ thrum job done   → signal completion; the daemon tears you down.      │
+│ thrum job done --run-id <id from the wake message>                    │
+│   (signal completion; the daemon tears you down.)                     │
 │ Then EXIT. Do not start a second cycle.                               │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
 An empty run (no `needs_triage`) is still valid: run `emit` (advances the
-cursor, records the run), `report`, print the pane line, then `thrum job done`.
+cursor, records the run), `report`, print the pane line, then
+`thrum job done --run-id <id from the wake message>`.
 
 Scanner-failure, store-loss, and bd-down surface automatically as high-priority
 health-alerts — don't suppress them, nothing else to do.

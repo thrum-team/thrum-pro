@@ -14,12 +14,16 @@
 #
 # Runtime- and box-neutral: no paths are hard-coded. The memory directory is
 # the topic file's directory and the index is <memory dir>/MEMORY.md (the
-# caller edits the index; this script never does). The thrum repo must be set
-# with THRUM_REPO, because thrum finds its daemon from the current directory.
+# caller edits the index; this script never does). thrum takes the caller's
+# identity from the current directory, so every thrum call runs from the
+# directory the script was started in (the caller's own worktree). THRUM_REPO,
+# the thrum repo root, must be set and is used only when that directory is not
+# inside a thrum repo.
 #
 # Licensing: `thrum memory create` needs the memory.substrate entitlement. The
 # helper probes that entitlement through the daemon before reading or writing
-# anything. Without it the helper exits 7 with a plain message and changes nothing.
+# anything. Without it the helper exits 7 with a plain message and changes
+# nothing. Any other probe failure prints the real error and exits 8.
 set -euo pipefail
 usage() { echo "usage: to-thrum.sh <topic-file.md> <trigger> [agent_rule|lesson] --personal|--box-wide" >&2; exit 2; }
 audience=""; npos=0; pos0=""; pos1=""; pos2=""
@@ -47,16 +51,25 @@ f="$(cd "$(dirname "$f")" && pwd)/$(basename "$f")"
 repo="${THRUM_REPO:-}"
 [ -n "$repo" ] && [ -d "$repo" ] || { echo "set THRUM_REPO to the thrum repo root" >&2; exit 2; }
 
+# thrum runs from the directory the script started in; THRUM_REPO only when that is not in a thrum repo.
+workdir="$PWD"; d="$(pwd -P)"
+while [ ! -e "$d/.thrum/redirect" ] && [ ! -e "$d/.thrum/config.json" ]; do [ "$d" != / ] || { workdir="$repo"; break; }; d="$(dirname "$d")"; done
+
 # Entitlement, checked by the daemon, not by tier name. memory.edit runs the
 # memory.substrate gate as its first statement, so an edit of a nonexistent ID
 # returns "not found" only when the feature is granted, and the license error
 # otherwise. Nothing is written by the probe. Fail closed: proceed only on
-# "not found" for the probe ID.
-probe="$(cd "$repo" && thrum memory edit thrum-mem-entitlement-probe-000 --oneline probe 2>&1 || true)"
+# "not found" for the probe ID; only a license refusal says "needs Thrum Pro".
+probe="$(cd "$workdir" && thrum memory edit thrum-mem-entitlement-probe-000 --oneline probe 2>&1 || true)"
 if ! printf '%s\n' "$probe" | grep -q 'memory: not found: thrum-mem-entitlement-probe-000'; then
-  echo "needs Thrum Pro (free for eligible public repositories)" >&2
+  if printf '%s\n' "$probe" | grep -qE 'requires a license|not entitled'; then
+    echo "needs Thrum Pro (free for eligible public repositories)" >&2
+    echo "not changed: $f" >&2
+    exit 7
+  fi
+  echo "memory probe failed: $probe" >&2
   echo "not changed: $f" >&2
-  exit 7
+  exit 8
 fi
 
 [ "${#trigger}" -le 200 ] || { echo "trigger over 200 chars" >&2; exit 2; }
@@ -65,7 +78,7 @@ tmp="$(mktemp -d)"; trap 'rm -r "${tmp:?}"' EXIT
 awk 'BEGIN{n=0} /^---$/ && n<2 {n++; next} n>=2{print}' "$f" | awk 'NR==1 && $0=="" {next} {print}' > "$tmp/body.md"
 [ -s "$tmp/body.md" ] || { echo "empty body: $f" >&2; exit 3; }
 id="$(awk '/^  thrum_memory: /{print $2; exit}' "$f")"
-cd "$repo"
+cd "$workdir"
 if [ -z "$id" ]; then
   out="$(thrum memory create --kind "$kind" --scope "$scope" --title "$(basename "$f" .md)" \
     --oneline "$trigger" --full @"$tmp/body.md" --tag claude-memory --tag "$audience_tag" --json)"

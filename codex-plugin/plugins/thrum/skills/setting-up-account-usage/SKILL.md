@@ -86,12 +86,17 @@ non-default path is not seen by the daemon.
 | `opencode`    | `opencode-go` key in OpenCode's store; no Keychain.                                                      | same                                                  |
 
 macOS grant (human step, unconfirmed by any agent run): the USER runs
-`quota-axi --allow-keychain-prompt` (add `--provider <name>` to limit it; read
-`quota-axi --help` first) in their OWN terminal and chooses "Always Allow" for
-each Keychain prompt. The grant is stored in quota-axi's cache under `HOME`,
-which the daemon shares, so it carries over. Do not run it for the user, do not
-run it in a shared tmux pane, and never read the Keychain yourself. Without the
-grant those runtimes report unavailable with a reason; that is expected, not a
+`quota-axi --allow-keychain-prompt --provider <name>` (read `quota-axi --help`
+first) once in their OWN terminal; quota-axi then remembers it in a marker file
+under `~/.cache/quota-axi`. macOS may or may not show a dialog. Two conditions:
+the flagged run must be as the same user and `HOME` as the daemon, with
+`XDG_CACHE_HOME` unset (or equal to `$HOME/.cache`), because the daemon runs
+quota-axi with only `HOME` and `PATH` and so always looks under `$HOME/.cache`;
+and it is one flagged run per Keychain item (the marker is per item). Do not run
+it for the user, do not run it in a shared tmux pane, and never read the
+Keychain yourself. Without the grant those runtimes report unavailable with a
+reason (`keychain_prompt_required` for claude, which the daemon turns into one
+notice 30 to 45 minutes after the first failed read); that is expected, not a
 failure.
 
 On Linux there is no prompt: after the install and the config change nothing

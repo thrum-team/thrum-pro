@@ -26,6 +26,9 @@ cat > "$BIN/thrum" <<'FAKE'
 echo "$*" >> "$FAKE_LOG"
 case "$1 ${2:-}" in
   "memory edit")
+    echo "$PWD" >> "$FAKE_LOG.cwd"
+    # Another agent's directory: thrum reads the caller's identity from the cwd and refuses.
+    if [ "$PWD" = "${FAKE_MISMATCH_DIR:-}" ]; then echo 'Error: memory.edit: RPC error -32000: identity_mismatch: caller identity does not match this worktree'; exit 1; fi
     cat "$FAKE_PROBE_OUT" ;;
   "memory create")
     full=""; while [ $# -gt 0 ]; do [ "$1" = "--full" ] && { full="${2#@}"; break; }; shift; done
@@ -147,5 +150,39 @@ grep -q '^memory create' "$LOG" && fail "reuse: memory create ran for an existin
 PATH="$BIN:$PATH" FAKE_PROBE_OUT="$TMP/probe-granted" THRUM_REPO="$TMP/repo" \
   bash "$SCRIPT_DIR/to-thrum.sh" --box-wide "$topic6" "when reuse applies" >/dev/null 2>"$TMP/reuse2.err"
 grep -q 'thrum memory edit mem-1 --add-tag indexed_in:runtime_memory' "$TMP/reuse2.err" || fail "reuse: no box-wide tagging hint: $(cat "$TMP/reuse2.err")"
+
+# 9. The probe and the create run from the directory the script started in (the
+#    caller's own worktree), not from THRUM_REPO: here THRUM_REPO is another
+#    agent's directory and thrum refuses it with identity_mismatch.
+mkdir -p "$TMP/wt/.thrum" "$TMP/nowhere"; : > "$TMP/wt/.thrum/redirect"
+printf 'Error: memory.edit: RPC error -32000: identity_mismatch: caller identity does not match this worktree\n' > "$TMP/probe-mismatch"
+topic7="$TMP/memory/topic7.md"
+printf -- '---\nname: topic7\nmetadata:\n  type: feedback\n---\n\nWorktree rule body.\n' > "$topic7"
+inwt() { local probe="$1"; shift; (cd "$TMP/wt" && PATH="$BIN:$PATH" FAKE_PROBE_OUT="$probe" FAKE_MISMATCH_DIR="$TMP/repo" THRUM_REPO="$TMP/repo" \
+  bash "$SCRIPT_DIR/to-thrum.sh" "$@" 2>&1); }
+id7="$(inwt "$TMP/probe-granted" "$topic7" "from the caller's worktree" --personal)" || fail "worktree start: $id7"
+[ "$id7" = "mem-1" ] || fail "worktree start gave [$id7], want mem-1 (probe must not run in THRUM_REPO)"
+
+# 10. Only a license refusal says "needs Thrum Pro" (exit 7); any other probe failure
+#     prints the real error and exits 8, and nothing changes.
+topic8="$TMP/memory/topic8.md"
+printf -- '---\nname: topic8\nmetadata:\n  type: feedback\n---\n\nOther failure body.\n' > "$topic8"
+before8="$(cat "$topic8")"
+: > "$LOG"
+set +e; out="$(inwt "$TMP/probe-mismatch" "$topic8" "other failure" --personal)"; rc=$?; set -e
+[ "$rc" -eq 8 ] || fail "non-license probe failure exit was $rc, want 8"
+printf '%s' "$out" | grep -q 'identity_mismatch' || fail "real error text missing: $out"
+printf '%s' "$out" | grep -q 'needs Thrum Pro' && fail "non-license failure printed the Pro message"
+[ "$(cat "$topic8")" = "$before8" ] || fail "topic file changed on a probe failure"
+grep -q 'memory create' "$LOG" && fail "memory create ran on a probe failure"
+set +e; out="$(inwt "$TMP/probe-not-granted" "$topic8" "license refusal" --personal)"; rc=$?; set -e
+[ "$rc" -eq 7 ] || fail "control: license refusal exit was $rc, want 7"
+printf '%s' "$out" | grep -q 'needs Thrum Pro' || fail "control: license refusal lost the Pro message"
+
+# 11. Started outside any thrum repo, the script falls back to THRUM_REPO.
+: > "$LOG.cwd"
+(cd "$TMP/nowhere" && PATH="$BIN:$PATH" FAKE_PROBE_OUT="$TMP/probe-granted" THRUM_REPO="$TMP/repo" \
+  bash "$SCRIPT_DIR/to-thrum.sh" "$topic8" "fallback" --personal >/dev/null 2>&1) || fail "fallback run failed"
+grep -qx "$TMP/repo" "$LOG.cwd" || fail "fallback: probe did not run in THRUM_REPO: $(cat "$LOG.cwd")"
 
 echo "PASS: to-thrum.sh refuses when memory.substrate is not granted (no change), proceeds when it is, and tags by audience"

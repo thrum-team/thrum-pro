@@ -26,7 +26,6 @@ coordinator-rolling-out-to-nodes
 coordinator-running-autonomous-feature-development
 coordinator-running-brainstorm-cycles
 coordinator-running-review-cycles
-coordinator-single-responsibility-merge-gate
 deviations-protocol
 diagnosing-fleet-and-daemon
 efficient-multi-agent-research
@@ -63,7 +62,6 @@ routing-messages-across-daemons
 setting-up-account-usage
 snapshot-protocol
 stamp-protocol
-state-migration
 steward
 third-party-audit-opencode
 thrum
