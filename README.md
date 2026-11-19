@@ -10,8 +10,8 @@
 > ```
 > Then run `/reload-plugins` or restart your agents. To go back to stable, run the same commands with `https://github.com/thrum-team/thrum-pro.git` (no `#rc`).
 >
-> **Codex:** `codex plugin marketplace remove thrum-marketplace && codex plugin marketplace add thrum-team/thrum-pro@rc && codex plugin add thrum@thrum-marketplace`
-> **Muse:** `muse plugins marketplace remove leonletto && muse plugins marketplace add leonletto 'https://github.com/thrum-team/thrum-pro.git#rc' && muse plugins remove thrum && muse plugins install thrum@leonletto && muse plugins approve thrum`
+> **Codex:** `codex plugin marketplace remove thrum-marketplace; codex plugin marketplace add thrum-team/thrum-pro@rc && codex plugin add thrum@thrum-marketplace`
+> **Muse:** `muse plugins marketplace remove leonletto; muse plugins marketplace add leonletto 'https://github.com/thrum-team/thrum-pro.git#rc' && muse plugins remove thrum; muse plugins install thrum@leonletto && muse plugins approve thrum`
 > **OpenCode:** use `"opencode-thrum-pro@rc"` in `opencode.json`.
 > **Cursor:** has no branch option, so it stays on the stable plugin.
 
