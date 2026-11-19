@@ -151,13 +151,12 @@ Confirm the pinned version is durable across a clean cold-boot probe where appli
 
 ## 8d. Verify the GUI shows every agent (by effect)
 
-A build can decode `agent.list` fine on the daemon and still hide agents in the GUI (a strict UI decode once hid 485
-of 538 on a canary). Compare what the daemon lists with what the GUI renders, on the node:
+Compare what the daemon lists with what the GUI renders, on the node:
 
 1. Expected numbers, run ON the node (python3 only, read-only, calls the daemon's own `agent.list` over its socket):
-   `python3 <skill>/resources/agent-count-expected.py` prints `rail_expected`, `fleet_expected` and
-   `records_lacking_proof`. Do not use `thrum team --all` as the baseline: it is `team.list`, a different set (stale
-   rows included).
+   `python3 <skill>/resources/agent-count-expected.py` prints `rail_expected`, `fleet_expected`,
+   `stale_from_unknown` and `records_lacking_proof`. Do not use `thrum team --all` as the baseline: it is `team.list`,
+   a different set (stale rows included).
 2. Rendered numbers. Needs Playwright plus a browser. The script tries Playwright's bundled Chromium, then the newest
    installed `chromium-<rev>` under the Playwright browsers dir (`PLAYWRIGHT_BROWSERS_PATH`, else the per-user
    `ms-playwright` cache; a Playwright upgrade can leave only other revisions), then an installed Google Chrome. It
@@ -170,7 +169,8 @@ of 538 on a canary). Compare what the daemon lists with what the GUI renders, on
    1280x720 and read by hand:
    - rail: the heading `Agents (N)` above the left-rail list (`h3` in the agent list);
    - Fleet: add the five badges `category-count-Working`, `-Standby`, `-EmptySession`, `-RuntimeExited`, `-Worktree`
-     (the Stale and Archived badges come from a separate query and are not part of the sum);
+     (the Stale and Archived badges are not part of the sum; records whose `presentation_state` is `unknown` are
+     filed under Stale, so they are not in `fleet_expected`);
    - notice: the box `incomplete-agents-notice`, if present.
 3. PASS = `rail == rail_expected` AND `fleet == fleet_expected`. The GUI must render ALL records, complete or not: a
    record lacking its daemon or repo id is shown, not dropped. If the notice is present it is information only. Report
@@ -180,7 +180,9 @@ of 538 on a canary). Compare what the daemon lists with what the GUI renders, on
    agents. Stop the roll and report both sets of numbers.
 
 Rules mirrored from `AgentList.tsx` and `FleetGrid.tsx` (rail: local-origin rows, no users, no retired rows,
-deduplicated by bare name; Fleet: every non-stale, non-archived record). If those components change the filter, update
+deduplicated by bare name; Fleet: every record in a Working, Standby, EmptySession, RuntimeExited or Worktree
+state; `unknown`, stale, retired and archived records are not counted). `stale_from_unknown` is the number of
+`unknown`-state records, which the GUI shows under the Stale card. If those components change the filter, update
 `agent-count-expected.py` and its test in the same change.
 
 ## Red flags — STOP

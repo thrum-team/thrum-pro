@@ -9,8 +9,12 @@ prints the numbers the GUI must show:
                   users, no retired rows, deduplicated by bare agent name.
   fleet_expected  the Fleet grid: sum of the five active category badges
                   (Working, Standby, EmptySession, RuntimeExited, Worktree).
-                  Stale and Archived come from a separate query and are not
-                  part of this sum.
+                  Records whose presentation_state is "unknown" are not in
+                  this sum; they are counted in stale_from_unknown. Stale and
+                  Archived are not in this sum either.
+  stale_from_unknown  records whose presentation_state is "unknown". The GUI
+                  files them under Stale, so this count is the number the
+                  Stale card gains from them.
   records_lacking_proof  records without origin_daemon or origin_repo_id. This
                   is INFORMATION ONLY. The GUI renders those rows too, so they
                   are counted in both expected numbers.
@@ -89,12 +93,15 @@ def compute(result):
     cats = {c: 0 for c in CATEGORIES}
     rail = set()
     lacking = []
+    unknown = 0
     for a in agents:
         state = a.get("presentation_state") or "active"
         if state in ACTIVE:
             cats[ACTIVE[state]] += 1
+        elif state == "unknown":
+            unknown += 1  # the GUI files unknown under Stale, outside the five badges
         elif state not in INACTIVE:
-            cats["Working"] += 1  # unknown states keep the Working default in the GUI
+            cats["Working"] += 1  # any other unlisted state keeps the Working default
         if a.get("kind") == "agent" and not (a.get("origin_daemon") and a.get("origin_repo_id")):
             lacking.append(a.get("agent_id", ""))
         local = (a.get("origin") or "local") == "local"
@@ -107,6 +114,7 @@ def compute(result):
         "fleet_categories_expected": cats,
         "records_lacking_proof": len(lacking),
         "lacking_proof_sample": lacking[:10],
+        "stale_from_unknown": unknown,
     }
 
 
