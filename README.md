@@ -1,4 +1,20 @@
 # Thrum Pro
+> **This is the release-candidate (`rc`) branch. It serves plugin 1.2.0-rc.3, which matches thrum binary v1.2.0-rc.3.**
+> The default marketplace reads `main` (the stable plugin). To get the rc plugin:
+>
+> **Claude Code**
+> ```
+> claude plugin marketplace remove thrum
+> claude plugin marketplace add 'https://github.com/thrum-team/thrum-pro.git#rc'
+> claude plugin install thrum@thrum
+> ```
+> Then run `/reload-plugins` or restart your agents. To go back to stable, run the same commands with `https://github.com/thrum-team/thrum-pro.git` (no `#rc`).
+>
+> **Codex:** `codex plugin marketplace remove thrum-marketplace && codex plugin marketplace add thrum-team/thrum-pro@rc && codex plugin add thrum@thrum-marketplace`
+> **Muse:** `muse plugins marketplace remove leonletto && muse plugins marketplace add leonletto 'https://github.com/thrum-team/thrum-pro.git#rc' && muse plugins remove thrum && muse plugins install thrum@leonletto && muse plugins approve thrum`
+> **OpenCode:** use `"opencode-thrum-pro@rc"` in `opencode.json`.
+> **Cursor:** has no branch option, so it stays on the stable plugin.
+
 
 **The distribution point for the Thrum Pro plugin.**
 
