@@ -1023,7 +1023,7 @@ Flags:
                                  (still requires daemon + LLM unless
                                  --no-llm-summaries is also set)
 --limit N                        Migrate only the first N entries (0 = no limit)
---model <name>                   LLM chat model (default qwen3:30b-a3b-instruct-2507-q4_K_M)
+--model <name>                   LLM chat model (default: the configured default model)
 --endpoint <url>                 Override endpoint list (default reads OLLAMA_HOST_1/_2 / OLLAMA_HOSTS)
 --no-llm-summaries               Skip LLM synthesis; write body_full only (MEM-010 hints fire per-entry)
 --rollback                       Reverse a migration via manifest

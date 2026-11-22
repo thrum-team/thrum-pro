@@ -17,7 +17,9 @@ they're independent reads of the same diff.
 reviewers as parallel sub-agents in the same message. Pass each a clear scope
 ("review the diff at <BASE>...<HEAD> for <criteria>").
 
-> **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the `choosing-subagent-models` skill (read `runtime.role_models` at the moment of use). Never let a sub-agent inherit your own model.
+> **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the
+> `choosing-subagent-models` skill (run `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 ## Wait for both reviewers before sending anything to the implementer
 

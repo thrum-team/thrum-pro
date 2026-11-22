@@ -124,7 +124,7 @@ yours to grant onward.
   PANE EMITS NOTHING, so nobody can tell you are blocked. If you must background
   work, wait for the completion notification.
 - Every sub-agent YOU spawn gets an explicit `model:` chosen per `choosing-subagent-models`
-  (read `runtime.role_models`). The model ban list lives there. A costly tier is never yours.
+  (run `thrum config list-role-models`). A costly tier is never yours.
 - READ-ONLY git outside your own worktree. NEVER `checkout`/`reset`/`restore`/
   `stash`/`clean` in ANY directory — `stash` is one shared stack across all
   worktrees and the shared tree holds live agents' uncommitted state.

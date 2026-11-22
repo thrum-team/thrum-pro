@@ -102,7 +102,7 @@ Per-finding disposition:
 - #3 (LOW) — verified false positive: <one-line evidence>
 - #4 (LOW) — deferred per <decision/rationale>
 
-make test PASS (race), make lint PASS.
+The test and lint checks in `.thrum/policy/gates.json` PASS.
 ```
 
 For first-pass DONE (not review-fix), cite the closing SHA and the test result.

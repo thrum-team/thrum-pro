@@ -24,7 +24,7 @@ prevents duplicate listeners — spawning when one is already running is safe.
 ```text
 Task(
   subagent_type="message-listener",
-  model="<per choosing-subagent-models>",  # cheapest tier
+  model="<model prime rendered; else the stored message-listener row of thrum config list-role-models --role message-listener>",
   prompt="Listen for Thrum messages.\nSTEP_1: thrum-startup --listener-heartbeat\nSTEP_2: thrum wait --timeout 8m --after -15s --agent-name <name>"
 )
 ```
@@ -59,7 +59,7 @@ Automatically respawn the listener if it dies or is lost after compaction.
 ```text
 CronCreate(
   cron="*/30 * * * *",
-  prompt="Check the listener PID file at .thrum/var/<name>-listener.pid.\nIf the file does not exist, or if kill -0 <pid> fails (process not running),\nspawn a new listener:\n\nAgent(subagent_type=\"message-listener\", model=\"<per choosing-subagent-models>\", prompt=\"Listen for Thrum messages.\\nSTEP_1: thrum-startup --listener-heartbeat\\nSTEP_2: thrum wait --timeout 8m --after -15s --agent-name <name>\")"
+  prompt="Check the listener PID file at .thrum/var/<name>-listener.pid.\nIf the file does not exist, or if kill -0 <pid> fails (process not running),\nspawn a new listener:\n\nAgent(subagent_type=\"message-listener\", model=\"<model prime rendered; else the stored message-listener row of thrum config list-role-models --role message-listener>\", prompt=\"Listen for Thrum messages.\\nSTEP_1: thrum-startup --listener-heartbeat\\nSTEP_2: thrum wait --timeout 8m --after -15s --agent-name <name>\")"
 )
 ```
 

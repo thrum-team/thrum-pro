@@ -31,6 +31,10 @@ than idling.
 | `sleeping_roster`          | array          | no       | Roster members parked on purpose (names, or objects with `agent_id`). Treated like `expected_inactive_roster`, with the same resolve-then-compare rule.                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `secondary_duty`           | string         | no       | A free-form extra duty written by a coordinator, done in addition to the primary duty.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
+A bare roster name whose box matches several topology rows fails closed with no
+ssh fallback, so use the roster object form `{agent_id, hostname, tmux_session}`
+to pin a box that runs several daemons.
+
 ## `pin_override`
 
 A deliberate coordinator override and an ordinary drifted pin look the same from

@@ -323,7 +323,7 @@ Also needed from CLAUDE.md or conversation context:
 
 - **Project root** — absolute path to the project
 - **Tech stack** — languages, frameworks, tools in use
-- **Quality commands** — test/lint commands (e.g. `make test && make lint`)
+- **Quality commands** — test/lint commands (the commands in `.thrum/policy/gates.json`)
 - **Coverage target** — minimum coverage threshold (e.g. `>80%`)
 
 If any are missing, ask the user (prefer multiple choice when possible).
@@ -462,7 +462,9 @@ commands to run, the within-epic `bd dep add <later_id> <earlier_id>` ordering
 commands, and instructions to return the created task IDs and titles. Invoke
 `efficient-multi-agent-research` § Core Pattern for launch-and-wait mechanics.
 
-> **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the `choosing-subagent-models` skill (read `runtime.role_models` at the moment of use). Never let a sub-agent inherit your own model.
+> **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the
+> `choosing-subagent-models` skill (run `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 After sub-agents return IDs, set cross-epic dependencies directly (requires IDs
 from multiple sub-agents):

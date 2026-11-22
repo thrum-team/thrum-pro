@@ -354,7 +354,7 @@ RESOLVED_SSH_REPO=()
 RESOLVED_COUNT=0
 
 resolve_roster_targets() {
-  local agent pool_json box i matched row_found ridx
+  local agent pool_json box i matched row_found ridx nmatch
   ridx=-1
   for agent in "${ROSTER[@]}"; do
     ridx=$((ridx + 1))
@@ -372,7 +372,16 @@ resolve_roster_targets() {
     if pool_json="$(thrum state get "agent_pool:${agent%%@*}" --json 2>>"${LOG_FILE}")"; then
       box="$(printf '%s' "${pool_json}" | jq -r '.entry.value.box // empty')"
       if [ -n "${box}" ]; then
+        nmatch=0
         for i in "${!TOPO_HOSTNAME[@]}"; do
+          [ "${TOPO_HOSTNAME[$i]}" = "${box}" ] && nmatch=$((nmatch + 1))
+        done
+        if [ "${nmatch}" -gt 1 ]; then
+          row_found=1
+          log "agent=${agent} WARN ${nmatch} topology rows match host=${box} -- ambiguous, fail-closed, no ssh fallback for this agent"
+        fi
+        for i in "${!TOPO_HOSTNAME[@]}"; do
+          [ "${nmatch}" -gt 1 ] && break
           if [ "${TOPO_HOSTNAME[$i]}" = "${box}" ]; then
             row_found=1
             if is_placeholder "${TOPO_REPO_PATH[$i]}" || is_placeholder "${TOPO_SSH_TARGET[$i]}"; then

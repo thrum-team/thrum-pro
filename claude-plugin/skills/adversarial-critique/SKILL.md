@@ -54,7 +54,9 @@ Pre-assembled context is the difference between a real debate and a shallow one.
 
 ## The three rounds
 
-> **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the `choosing-subagent-models` skill (read `runtime.role_models` at the moment of use). Never let a sub-agent inherit your own model.
+> **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the
+> `choosing-subagent-models` skill (run `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 Dispatch one sub-agent per option, in parallel (single message, multiple Agent
 tool calls). `model: <per choosing-subagent-models>` for all dispatches — a cheaper tier

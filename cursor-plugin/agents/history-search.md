@@ -1,7 +1,6 @@
 ---
 name: history-search
 description: "Answers a question about past agent work by searching this box's session transcripts - one agent, a group of agents or all agents. Returns a short answer with agent, date and session citations, or NOT FOUND. Read-only."
-model: haiku
 maxTurns: 20
 tools:
   - Bash

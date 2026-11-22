@@ -13,7 +13,8 @@
 #      exits 0.
 #
 # Dedup file: ~/.thrum/var/hook-state/s-<session_id>/injected-rules, where session_id
-# is the stdin session_id or else CLAUDE_CODE_SESSION_ID. With neither, nothing is recorded.
+# is stdin session_id, then CLAUDE_CODE_SESSION_ID, then CLAUDE_SESSION_ID.
+# With neither, nothing is recorded.
 # One rule ID per line. Created on first injection.
 #
 # Output contract (one JSON object on stdout, exit 0, nothing on stderr):
@@ -77,10 +78,10 @@ fi
 # Fetch agent_rule records (zoom=full).
 rules_json=$(${_timeout_cmd} thrum memory list --kind agent_rule --zoom full --format json 2>/dev/null) || rules_json='{"items":[]}'
 
-# Per-session dedup key: stdin session_id, else CLAUDE_CODE_SESSION_ID, else none
-# (deliver, record nothing). The folder is s-<id> with "/" mapped to "_", so no id
+# Per-session dedup key: stdin session_id, then Claude environment fallback.
+# Without either, deliver without recording. The folder is s-<id> with "/" mapped to "_", so no id
 # can escape hook-state (a "..", "a/b" or "../x" id stays one folder inside it).
-session_id=$(printf '%s' "$input" | jq -r --arg e "${CLAUDE_CODE_SESSION_ID:-}" 'if (.session_id // "") != "" then .session_id else $e end' 2>/dev/null) || session_id=""
+session_id=$(printf '%s' "$input" | jq -r --arg e "${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}" 'if (.session_id // "") != "" then .session_id else $e end' 2>/dev/null) || session_id=""
 dedup_file=/dev/null
 if [ -n "$session_id" ]; then
     dedup_file="${HOME}/.thrum/var/hook-state/s-${session_id//\//_}/injected-rules"

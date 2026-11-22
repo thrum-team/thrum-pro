@@ -16,8 +16,8 @@ resources/start-watcher.sh <name> --role watcher|steward --parent <agent|user:NA
   [--cadence-active 5m] [--cadence-idle 10m] [--runtime <runtime>] [--owner <user>] [--restart-ctx-pct 50]
 ```
 
-- `--model` and `--effort` have no default; the script refuses without them. Read the tier for the role with
-  `jq -r '.runtime.role_models' .thrum/config.json`. A small model at low effort is enough for most rosters.
+- `--model` and `--effort` have no default; the script refuses without them. Read the model and effort with
+  `thrum config list-role-models --runtime <runtime> --role watcher`. A small model at low effort is enough for most rosters.
 - It checks everything first and creates nothing if any check fails: a free name, a resolvable parent, a non-empty
   roster whose members all resolve, a cadence of at least one minute, a pinned model and effort, and an owner. The owner
   is `--owner`, else the first `@user:` entry of `permission_supervisors` in `.thrum/config.json`; with neither, the

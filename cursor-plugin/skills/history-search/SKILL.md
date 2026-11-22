@@ -21,7 +21,9 @@ Not for the current code (read it) or anything already in this conversation.
 ## How
 
 Plugin agents (Claude, Cursor): dispatch the `history-search` agent with the question and a scope: one agent,
-`a,b`, a worktree, or all. Pin nothing; the agent carries its own tier.
+`a,b`, a worktree, or all. Read `thrum config list-role-models`, use the
+history-search row if present, else the researcher row, and pass that model
+explicitly when dispatching.
 
 Runtimes without plugin agents: spawn your cheapest-tier agent, pinned explicitly per
 `choosing-subagent-models`, with `resources/search-prompt.md` from this skill's folder as its instructions

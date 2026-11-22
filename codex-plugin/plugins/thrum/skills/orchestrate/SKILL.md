@@ -182,20 +182,21 @@ thrum worktree create <name>
 # Pin --model on BOTH create AND launch — create's persist to runtime_config.json
 # is asynchronous and can lose the race to launch's resolution if launch omits
 # the flag (see CLAUDE.md "Launching an Agent"). There is no create-only shortcut.
-# Always launch implementers pinned to the tier from runtime.role_models, per
-# choosing-subagent-models; that tier is the floor, no lower tier exists.
+# Always launch implementers pinned to the model and effort that
+# `thrum config list-role-models --runtime <runtime> --role implementer` returns,
+# per choosing-subagent-models; that is the floor, no lower tier exists.
 thrum tmux create <name> --cwd <worktree-path> \
   --name <agent_name> --role implementer --module <module> \
   --mode ephemeral --identity ephemeral \
-  --model <from runtime.role_models, per choosing-subagent-models> \
-  --effort <from runtime.role_models, per choosing-subagent-models>
-thrum tmux launch <name> --runtime <runtime> --model <from runtime.role_models, per choosing-subagent-models> \
-  --effort <from runtime.role_models, per choosing-subagent-models>
+  --model <model from list-role-models> \
+  --effort <effort from list-role-models>
+thrum tmux launch <name> --runtime <runtime> --model <model from list-role-models> \
+  --effort <effort from list-role-models>
 ```
 
-If `runtime.role_models` has no entry for the role, never ask the user for a
-model or effort. Launch without `--model` and `--effort` so the runtime's own
-default applies.
+Never ask the user for a model or effort, and never launch without them: run
+`thrum config list-role-models --runtime <runtime> --role implementer` and pass
+exactly what it returns.
 
 > **Implementer lifecycle:** All implementers are ephemeral+stateless (no agent
 > folder). At NORMAL epic completion AND at a tier-swap, retire the agent with
@@ -234,17 +235,17 @@ thrum tmux capture <agent-name> --format=annotated --lines 12
 ```
 
 That prints the runtime's own footer line, e.g. `Model: <resolved model>`.
-**Read the intended tier from `.thrum/config.json` → `runtime.role_models`, not
-from memory.** If the footer shows a different tier (see the BLOCKED note under
-Step 2 — the model ban list lives in `choosing-subagent-models`), the pin failed
+**Read the intended model and effort from
+`thrum config list-role-models --runtime <runtime> --role <role>`, not from
+memory.** If the footer shows a different tier (see the BLOCKED note under Step
+2 — the model ban list lives in `choosing-subagent-models`), the pin failed
 silently — re-pin with
-`thrum tmux create ... --model <from runtime.role_models, per choosing-subagent-models> --effort <from runtime.role_models, per choosing-subagent-models>`
+`thrum tmux create ... --model <model from list-role-models> --effort <effort from list-role-models>`
 (or
-`thrum agent runtime-config set <agent_name> --model <from runtime.role_models, per choosing-subagent-models>`)
+`thrum agent runtime-config set <agent_name> --model <model from list-role-models>`)
 and relaunch BEFORE assigning work. **Do not dispatch an unpinned implementer**
-— the daemon's role-default backstop
-(`jq -r '.runtime.role_models' .thrum/config.json`) is a net for a forgotten
-pin, not a substitute for this check.
+— the daemon's role-default backstop (`thrum config list-role-models`) is a net
+for a forgotten pin, not a substitute for this check.
 
 #### Step 4: Set initial status
 
@@ -406,8 +407,9 @@ Handle each message type:
 Phase 5):**
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and
-> effort per the `choosing-subagent-models` skill (read `runtime.role_models` at
-> the moment of use). Never let a sub-agent inherit your own model.
+> effort per the `choosing-subagent-models` skill (run
+> `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 **Blocker:**
 
@@ -857,14 +859,17 @@ operator-gated. Retiring does not free the identity; Step 4's create does. thrum
 agent set-phase retired --agent <underperforming_agent_name> Step 3: verify the
 worktree is intact (WIP code preserved). ls <worktree-path> Step 4: launch a
 fresh ephemeral identity under a NEW name in the SAME worktree, pinned on both
-create and launch from `runtime.role_models` (per `choosing-subagent-models`).
-`--intent` carries the orient-from-WIP one-liner. thrum tmux create
-<same_worktree_name> --cwd <worktree-path> --name <new_agent_name> --role
-implementer --module <module> --mode ephemeral --identity ephemeral --model <per
-runtime.role_models> --effort <per runtime.role_models> --intent "tier-swap:
-orient in the worktree (WIP + first-review findings) and continue" thrum tmux
-launch <same_worktree_name> --runtime claude --model <per runtime.role_models>
---effort <per runtime.role_models> Step 5: deliver the WIP pointer and
+create and launch from `thrum config list-role-models` (per
+`choosing-subagent-models`). `--intent` carries the orient-from-WIP one-liner.
+thrum tmux create <same_worktree_name> --cwd <worktree-path> --name
+<new_agent_name> --role implementer \
+ --module <module> --mode ephemeral --identity ephemeral --model
+<per list-role-models> \
+ --effort <per list-role-models> \
+ --intent "tier-swap: orient in the worktree (WIP + first-review findings) and
+continue" thrum tmux launch <same_worktree_name> --runtime claude --model
+<per list-role-models> \
+ --effort <per list-role-models> Step 5: deliver the WIP pointer and
 first-review findings (a cold handoff: the code plus the findings). thrum send
 --to @<new_agent_name> --stdin <<'EOF' Tier-swap pickup: <WIP summary +
 first-review findings> EOF

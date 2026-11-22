@@ -3,8 +3,8 @@ name: coordinator-plan-reconcile-gate
 description:
   "Use when parallel plans for one shared idea are all locked and about to feed
   project-setup, to check they compose at shared seams before any bead or
-  worktree exists. Uses Fable, the one standing exception to the
-  never-select-Fable rule."
+  worktree exists. Uses the reconcile model from runtime.role_models, the one
+  standing exception to the orchestration-tier spawn rule."
 # source: claude-plugin/skills/coordinator-plan-reconcile-gate/SKILL.md
 ---
 
@@ -66,27 +66,28 @@ For each seam, collect across the N plans:
 Build this as a small table before dispatching the reconciler; it is the
 reconciler's primary input alongside the plans themselves.
 
-### Step 2 — The reconcile pass (one top-level Fable agent, plans read together)
+### Step 2 — The reconcile pass (one top-level reconcile agent, plans read together)
 
-Spawn **one** top-level agent, `model: "fable"`.
+Spawn **one** top-level agent, pinned to the reconcile model that
+`thrum config list-role-models` returns for this gate; pass exactly that value.
 
-This is not a self-granted exception; it is the single deliberate use of Fable
-anywhere in the system, kept as an independent check-and-balance against
-everything else, which runs on the standard tier ceiling (see
-`choosing-subagent-models`). Fable — a distinct, more-capable model — is the
-right instrument specifically because a holistic cross-plan reconcile (does seam
-X mean the same thing in plan ① as in plan ②?) benefits from a different model
-than the standard-tier per-plan reviews, a form of cross-document judgment a
-standard-tier pass has been shown to miss.
+This is not a self-granted exception; it is the single deliberate use of the
+reconcile model anywhere in the system, kept as an independent check-and-balance
+against everything else, which runs on the standard tier ceiling (see
+`choosing-subagent-models`). The reconcile model — a distinct, more-capable
+model — is the right instrument specifically because a holistic cross-plan
+reconcile (does seam X mean the same thing in plan ① as in plan ②?) benefits
+from a different model than the standard-tier per-plan reviews, a form of
+cross-document judgment a standard-tier pass has been shown to miss.
 
-This is the **one named, cited exception** to the standing "never SELECT Fable"
-rule, which otherwise forbids ad-hoc Fable selection anywhere. The exception is
-scoped to this gate's reconcile pass ONLY — do not select Fable elsewhere in the
-pipeline, or for any other step, on the strength of this skill. Any new use of
-Fable outside this gate needs its own explicit approval, not an extension of
+This is the **one named, cited exception** to the standing rule against
+selecting the reconcile model ad hoc. The exception is scoped to this gate's
+reconcile pass ONLY — do not select that model elsewhere in the pipeline, or for
+any other step, on the strength of this skill. Any new use of the reconcile
+model outside this gate needs its own explicit approval, not an extension of
 this one.
 
-Give the fable agent:
+Give the reconcile agent:
 
 - All N plans, in full, in one dispatch (not summarized, not excerpted).
 - The seam table from Step 1.
@@ -115,7 +116,7 @@ Overall verdict is one of: **YES** (compose cleanly, no fixes needed),
 
 ### Step 3 — Per-plan verify-against-source, run alongside the reconcile pass
 
-Independently of the fable reconcile, run `verify-against-source` per plan
+Independently of the reconcile pass, run `verify-against-source` per plan
 against its own brainstorm/spec (this may already exist from Stage 3 — re-run it
 now if the plan changed since, so the reconcile gate is judging current text).
 This catches single-plan drift the reconciler isn't chartered to catch (the
@@ -168,7 +169,7 @@ rather than trusting each plan's own review to be sufficient. Caveat
 (load-bearing, n=1 so far): the effect was observed in **coupled** pairings
 (researchers who exchanged seam interpretations directly); whether it transfers
 to an uncoupled solo reviewer reading all plans cold is untested — treat the
-fable reconciler as necessary, not merely a formality confirming what cross-talk
+reconciler as necessary, not merely a formality confirming what cross-talk
 already caught.
 
 ### Gate that closes it
@@ -180,10 +181,10 @@ conflict forward into project-setup.
 
 ### Handoff
 
-Reconcile PASS → `project-setup` (Stage 5). Carry the seam table and the fable
-verdict forward as context for whoever authors the impl prompts — the seam
-ownership decisions are exactly what a prompt needs to state unambiguously so an
-implementer doesn't re-litigate them.
+Reconcile PASS → `project-setup` (Stage 5). Carry the seam table and the
+reconcile verdict forward as context for whoever authors the impl prompts — the
+seam ownership decisions are exactly what a prompt needs to state unambiguously
+so an implementer doesn't re-litigate them.
 
 ### See also
 

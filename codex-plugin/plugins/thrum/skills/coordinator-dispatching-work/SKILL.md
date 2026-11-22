@@ -75,8 +75,9 @@ optimization.
 ### Subagent model selection
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and
-> effort per the `choosing-subagent-models` skill (read `runtime.role_models` at
-> the moment of use). Never let a sub-agent inherit your own model.
+> effort per the `choosing-subagent-models` skill (run
+> `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 ### Check the target's queue before you dispatch (R3)
 
@@ -297,9 +298,9 @@ silently inherit too. Cost compounds across a session.
 
 **How to apply:** Every dispatch prompt should include the model-selection rule
 explicitly: "When you spawn your own sub-agents, pass explicit `model:` — choose
-model and effort per the `choosing-subagent-models` skill (read
-`runtime.role_models` at the moment of use); never inherit your own model."
-Audit the dispatch prompt before sending.
+model and effort per the `choosing-subagent-models` skill (run
+`thrum config list-role-models` for the agent's runtime and role); never inherit
+your own model." Audit the dispatch prompt before sending.
 
 ### The impl-prompt review stamp satisfies pre-dispatch review
 

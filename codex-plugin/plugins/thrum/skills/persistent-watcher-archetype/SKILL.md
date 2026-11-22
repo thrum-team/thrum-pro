@@ -26,9 +26,9 @@ resources/start-watcher.sh <name> --role watcher|steward --parent <agent|user:NA
 ```
 
 - `--model` and `--effort` have no default; the script refuses without them.
-  Read the tier for the role with
-  `jq -r '.runtime.role_models' .thrum/config.json`. A small model at low effort
-  is enough for most rosters.
+  Read the model and effort with
+  `thrum config list-role-models --runtime <runtime> --role watcher`. A small
+  model at low effort is enough for most rosters.
 - It checks everything first and creates nothing if any check fails: a free
   name, a resolvable parent, a non-empty roster whose members all resolve, a
   cadence of at least one minute, a pinned model and effort, and an owner. The

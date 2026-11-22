@@ -175,7 +175,7 @@ tmux list-panes -a -F '#{pane_pid}' | grep -w <identity-pid>   # must return NOT
 # 3. Create, replacing the stale identity. Quickstart flags are REQUIRED.
 thrum tmux create <name> --cwd <worktree> \
   --name <agent-id> --role <role> --module <module> \
-  --model <model> --effort <effort> --force
+  --model <model> --effort <effort> --force   # from `thrum config list-role-models`
 
 # 4. Launch; the runtime re-binds the identity on start.
 thrum tmux launch <name>
