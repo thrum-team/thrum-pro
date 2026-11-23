@@ -73,7 +73,7 @@ if [ -n "$EULA_LINE" ]; then
 fi
 if command -v jq >/dev/null 2>&1; then
   AGENT_ID=$(printf '%s' "$WHOAMI_JSON" \
-    | jq -r 'select(.agent_id != null) | .agent_id // empty' 2>/dev/null \
+    | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")' 2>/dev/null \
     || true)
 fi
 
@@ -113,6 +113,8 @@ HOOK_SOURCE=""
 if command -v jq >/dev/null 2>&1; then
   HOOK_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // empty' 2>/dev/null || true)
 fi
+# Tell `thrum prime` why this session started (startup|resume|clear|compact; empty when unknown).
+export THRUM_PRIME_SOURCE="$HOOK_SOURCE"
 
 LIGHT_MODE=0
 SNAPSHOT_SHOWN=""
@@ -239,6 +241,9 @@ fi
 # these paths itself.
 BRIEFING_SPLIT_MARKER='<!-- thrum:briefing-split -->'
 BRIEFING_INLINE_MAX=9000
+PREAMBLE_NOTICE='Your role preamble was loaded into your system prompt at launch; do not read it again unless it was re-rendered since.'
+[ "$(( $(date +%s) + 1 ))" -lt "$THRUM_SESSIONSTART_DEADLINE" ] &&
+(set -o pipefail; perl -MPOSIX=setpgid -e '$p=fork // exit 1; $p or do { defined setpgid(0,0) or exit 1; exec @ARGV or exit 1 }; $SIG{ALRM}=sub { kill "KILL", -$p, $p }; alarm 1; waitpid($p,0) == $p or exit 1; exit($? != 0)' thrum agent preamble-in-prompt "$AGENT_ID" </dev/null 2>/dev/null | cmp -s - <(printf '%s\n' "$PREAMBLE_NOTICE")) || PREAMBLE_NOTICE=""
 SPLIT_FIRST_LINE=""
 if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFING_INLINE_MAX" ]; then
   _split_wrapped=$'\n'"$PRIME_OUTPUT"$'\n'
@@ -262,7 +267,10 @@ if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFIN
       if [ "$_split_ok" -eq 1 ]; then
         _split_inline=${_split_wrapped%%"$_split_marker_line"*}
         PRIME_OUTPUT=${_split_inline#$'\n'}
-        if [ -n "$_split_project" ]; then
+        if [ -n "$PREAMBLE_NOTICE" ]; then
+          SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below.${_split_project:+ Read the Project State file ${_split_project}.} Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
+          if [ "${HOOK_SOURCE:-}" != compact ]; then SPLIT_FIRST_LINE="$SPLIT_FIRST_LINE $PREAMBLE_NOTICE"; fi
+        elif [ -n "$_split_project" ]; then
           SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below. Your first action is to read your role preamble ${_split_preamble} and the Project State file ${_split_project}. Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
         else
           SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below. Your first action is to read your role preamble ${_split_preamble}. Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
@@ -272,14 +280,12 @@ if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFIN
   esac
 fi
 
-# Post-compact REQUIRED line. After a compaction the resume prompt is the
-# strongest turn and names no preamble, so say plainly that reading it is the
-# first step. The startup SPLIT line above is unchanged (reworded variants
-# measured worse). The same sentence is used in compact.md and the
-# post-compact-recover.sh nudges, with the path resolved from the worktree.
+# After compaction, give the resume instruction first. Keep the file read
+# first for sessions whose preamble delivery is unconfirmed.
 COMPACT_REQ_LINE=""
 if [ "$HOOK_SOURCE" = "compact" ] && [ -n "$AGENT_WORKTREE" ]; then
   COMPACT_REQ_LINE="REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan below. The size of this briefing is not a reason to skip step 1."
+  if [ -n "$PREAMBLE_NOTICE" ]; then COMPACT_REQ_LINE="$PREAMBLE_NOTICE Follow the Resume Plan below."; fi
 fi
 
 # Two-phase build: assemble BANNER, RESTART_PREAMBLE, and BRIEFING into
@@ -310,7 +316,7 @@ RESTART_PREAMBLE=""
 if [ -z "$SPLIT_FIRST_LINE" ] && grep -q '^# Previous Session Context' <<<"$PRIME_OUTPUT"; then  # here-string: a pipe + grep -q SIGPIPEs printf under pipefail on big output
   append_to RESTART_PREAMBLE '# 🛑 ACTION REQUIRED — you left yourself a Resume Plan'$'\n'
   append_to RESTART_PREAMBLE $'\n'
-  append_to RESTART_PREAMBLE 'Before anything else, go to the **`# Previous Session Context`** section below, read its **`## Resume Plan`** (or its final next-actions section) in full, and execute the numbered steps in order. If the briefing was truncated or persisted to a file, first read the whole file with your file-reading tool, every page in order (if there is no file, run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime` once and read its output fully) ONCE and read that file; never repeat the prime command), do not jump to the Resume Plan, and name one fact from it before acting.'
+  append_to RESTART_PREAMBLE 'Before anything else, go to the **`# Previous Session Context`** section below, read its **`## Resume Plan`** (or its final next-actions section) in full, and execute the numbered steps in order. If the briefing was truncated or persisted to a file, first read the whole file with your file-reading tool, every page in order (do not repeat the prime command: a second prime cannot redeliver your restart snapshot), do not jump to the Resume Plan, and name one fact from it before acting.'
   if [ "$LIGHT_MODE" -eq 1 ]; then
     append_to RESTART_PREAMBLE " In light mode your snapshot is also at \`${SNAPSHOT_SHOWN:-.thrum/restart/${AGENT_ID}.md}\` (archived under \`.thrum/agents/${AGENT_ID}/sessions/\` once a prime has run); Read it first if the section is truncated or missing."
   fi

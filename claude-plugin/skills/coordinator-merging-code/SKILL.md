@@ -26,6 +26,64 @@ authority for this branch in practice (check with your team, or your
 project's own operational convention); if that is not you, route the merge
 to them the same as if the map had named them explicitly.
 
+## Missing policy files
+
+This skill reads these policy files, which other skills write:
+
+| File | Written by | Step that stops |
+|---|---|---|
+| `.thrum/policy/gates.json` | `onboarding-gates` | the lens-tier read before §2, so the merge stops there; also §4 |
+| `.thrum/policy/hotpath-gate.json` | `onboarding-gates` | §2, the hot-path trigger directories and the hot-path gate |
+| `.thrum/policy/philosophy.md` | `project-philosophy` | §3, the philosophy gate |
+
+A key this skill gives a default for, such as `verdict_log`, is not a miss.
+
+<!-- onboarding:alert -->
+**Missing policy.** Do this before you read a policy file, and again whenever a step needs a key from one.
+
+1. Check that the file exists and has the key you need. A file that exists but lacks the key is a miss. A file whose
+   writing section `.thrum/policy/onboarding.json` records as `undone` is a miss although the file is kept.
+2. On a miss, when the owner is present, first say this, with `<part>` the part that writes the file, in plain words:
+
+   <!-- markdownlint-disable MD013 -->
+   > Say: I can't do this step yet: <file> is missing because the <part> has not been set up. Run <skill> to add it.
+   <!-- markdownlint-enable MD013 -->
+
+   Then print `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (written by <skill>); run <skill>`. `<skill>` is
+   the name of the skill that writes the file (for example `onboarding-gates`), never a section label. Leave out
+   `[key <k>]` when the whole file is missing.
+3. Message the coordinator with that line, unless you are the coordinator.
+4. Stop the step that needs the file. Never continue with defaults.
+   Never take the value from another record instead: `onboarding.json`'s `answers`, an earlier verdict, or what you
+   remember of the file. Those record what was decided; only the file is the setting.
+5. If `.thrum/policy/onboarding.json` records the section that writes the file as `skipped`, word the notice by its
+   `reason`. It still stops:
+   - `owner`: `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (owner-declined); run <skill> to add it`
+   - `profile`: `ONBOARDING MISSING: .thrum/policy/<file> [key <k>] (skipped for the Solo profile; run <skill> to add it)`
+
+   A section recorded `undone` gets the plain wording from step 2.
+6. Check `reported` in `.thrum/policy/onboarding.json` first, and send a given signature once: `missing:<file>` or
+   `missing:<file>:<k>`, or `skipped:<skill>:<reason>` when step 5 applies. After you send it, add it to `reported`. If
+   `onboarding.json` does not exist, treat `reported` as empty and no section as skipped.
+<!-- /onboarding:alert -->
+
+## Lens tiers — read before §2 and §3
+
+Read `.thrum/policy/gates.json` itself now, with `cat` or `jq`. A file missing here stops the merge: run the alert above.
+`onboarding.json`'s `answers.tiers` is not this setting.
+
+Read `tiers` from `.thrum/policy/gates.json` before the hot-path section (§2) and the philosophy gate (§3), and before
+you read `hotpath-gate.json` or `philosophy.md`. A missing `tiers` key is a miss: run the alert above, naming
+`onboarding-gates`.
+
+- `tiers.hotpath_lens: false`: skip the hot-path trigger check and do not dispatch the hotpath gate. A missing
+  `hotpath-gate.json` is not a miss. Any `ratchets[]` entries in `gates.json` still run, as the hotpath dispatch's
+  ratchet lens, on the merged tree.
+- `tiers.philosophy_lens: false`: do not dispatch the philosophy gate. A missing `philosophy.md` is not a miss for this
+  step.
+- The verdict states each lens that is off, as `<lens> lens off (gates.json tiers.<key>: false)`.
+- A `true` value keeps today's steps, and a missing lens file is then a miss.
+
 ## LAND ON GREEN — read this before anything else in this skill
 
 **If a green gate run comes in, that is enough. Land it in the same turn.**
@@ -62,7 +120,13 @@ line seems to, this section wins.
 
 ### What the per-landing gate runs (owner ruling, 2026-10-11) — no race on every landing
 
-**A full race is NOT run for every landing.** Landings go in on a non-race
+Read `per_landing_race` and `batch.every_n_landings` from `.thrum/policy/gates.json` (a missing file or key is a miss:
+run the alert above). `per_landing_race` is `none`, `concurrency_only` or `full`. Thrum's own values are
+`concurrency_only` (no whole-package race per landing; step 5 only) and a batch race every 5 landings before deploy. The
+text below is thrum's own rule; where the file says `none`, skip step 5, and where it says `full`, run the race lane in
+step 3.
+
+**A full race is NOT run for every landing** under thrum's values. Landings go in on a non-race
 gate, and trunk is raced in batches. **Nothing gets to deploy without a race.**
 
 The per-landing gate:
@@ -85,8 +149,8 @@ Batch the slow whole-system checks: full race, regression and load tests.
 - These never run per landing. Gate-green candidates land immediately; nothing
   waits for them.
 - After every N landings, run each check ONCE on trunk's tip (the race as the
-  project test runner's `race all`, to one gate). N defaults to **5**; the user
-  may set a different N.
+  project test runner's `race all`, to one gate). N is `batch.every_n_landings` in `.thrum/policy/gates.json`;
+  thrum's own value is **5**, and `0` means no batch race.
 - A race failure is attributed to a landing by test name and stack trace and
   fixed as a follow-up. A regression or load result worse than the last good
   run is bisected across that batch's landings. Landings are not unwound, and
@@ -219,6 +283,8 @@ merge target before merging.
 3. Tell those agents where sensitive tests must execute.
 4. Launch a new gate agent only if the persistent set is genuinely unavailable —
    never merely because an old candidate-specific session is stale.
+5. The hot-path dispatch names the `ratchets[]` lens: every `ratchets[]` entry of `.thrum/policy/gates.json` runs as an
+   `always_run` lens on the merged tree, as `coordinator-hotpath-merge-gate` defines it.
 
 **Combine, don't gate one branch at a time.** Each gate box builds ONE combined merge tree from
 its queued items: related branches together, small ones folded in with the large, merged onto current trunk one
@@ -248,7 +314,7 @@ this line exists to stop.
 | Hot-path | `coordinator-hotpath-merge-gate` | **Only** if the diff touches zero `trigger_directories` |
 | Philosophy | `coordinator-philosophy-merge-gate` | **NEVER** |
 
-**Read the trigger directories and the lens count FROM `.thrum/hotpath-gate.json`,
+**Read the trigger directories and the lens count FROM `.thrum/policy/hotpath-gate.json`,
 at the tree under gate — never from prose, including this file.**
 
 ⚠️ **If your trigger-dir query returns EMPTY, treat it as a broken key until
@@ -263,8 +329,10 @@ for; it never changes who runs it. Only run a gate yourself when **no** gate-rol
 agent exists — and then say so explicitly in the merge record, so the gap is
 visible rather than invisible.
 
-A gate finding with no failing test or reproduction can never block. Label it UNMEASURED, state the
-likely cost, and name the test that would prove it. The coordinator forwards it only if the fix is
+A gate finding with no failing test or reproduction: Label it UNMEASURED, state the
+likely cost, and name the test that would prove it. It blocks only when `policy.unmeasured_findings_block` in
+`.thrum/policy/gates.json` is `true`; thrum's own value is `false`, so it never blocks. A missing file or key is a miss:
+run the alert. The coordinator forwards it only if the fix is
 clearly worth the cost, never as a 'real risk', and the owner can decline it. Same principle as the
 OVERBUILD CHECK (§0a): do not let an unproven worry become a cost to the owner.
 
@@ -306,10 +374,10 @@ is not a new permission grant.
 The §3 lens gates (hotpath + philosophy) are the judgement half. The per-merge
 executed half is **scoped to the change**:
 
-- Build the merged tree with the `build_merged_tree` command in `.thrum/gate-config.json`.
+- Build the merged tree with the `build_merged_tree` command in `.thrum/policy/gates.json`.
 - Test and race scope: follow "What the per-landing gate runs" above. Never run
   it on primary (the shared fleet build box); run it on the gate box.
-- The fast structural checks on the merged tree: every `structural_checks` entry in `.thrum/gate-config.json`
+- The fast structural checks on the merged tree: every `structural_checks` entry in `.thrum/policy/gates.json`
   (seconds each; they catch drift that does not depend on what the change touched).
 - The `merge-base --is-ancestor` fast-forward check (§6).
 - Any `*_tripwire_test.go` the change touches must stay green or the diff must
@@ -398,13 +466,14 @@ agreeing (`rev-parse origin/<branch>` and `ls-remote`). **Assert the branch TIP*
 ## 7. AFTER THE MERGE — four things, none optional
 
 1. **The gate-log line.** The runner appends ONE line (date, gate, candidate SHA, target
-   SHA, verdict, one short reason) to the project's verdict log (`verdict_log` in `.thrum/gate-config.json`) and commits it. That line is
+   SHA, verdict, one short reason) to the project's verdict log (`verdict_log` in `.thrum/policy/gates.json`) and
+   commits it. That line is
    the only record a gate keeps: never commit per-gate report directories, logs, archives
    or evidence, and delete the gate's output once you confirm the candidate landed or was
    rejected (owner ruling 2026-10-17). The line must be able to carry a `CLEAN-WITH-GATE-FIXES`
    outcome, and when one applies it cites the `GATE-AUTHORED` commit SHA.
 2. **One record only.** The only post-verdict record is the one line in
-   the project verdict log (`verdict_log` in `.thrum/gate-config.json`) (gate output is deleted after the verdict).
+   the project verdict log (`verdict_log` in `.thrum/policy/gates.json`) (gate output is deleted after the verdict).
 3. **Commit accumulated agent state** under `.thrum/agents/` along with the merge.
    Uncommitted agent state exists in exactly one working tree, and it IS the
    agent's memory across restarts. **Never `git add -f`.**
@@ -470,8 +539,8 @@ hides staleness.
 - `coordinator-hotpath-merge-gate` · `coordinator-philosophy-merge-gate` — the lenses
 - `coordinator-running-review-cycles` — the dual-review cycle feeding §1
 - `coordinator-branch-split-on-block` — when a gate blocks one concern of a bundled branch
-- the project verdict log (`verdict_log` in `.thrum/gate-config.json`) — the one-line-per-gate record
-- `.thrum/hotpath-gate.json` · `.thrum/philosophy.md` — the configs; read these, not prose
+- the project verdict log (`verdict_log` in `.thrum/policy/gates.json`) — the one-line-per-gate record
+- `.thrum/policy/hotpath-gate.json` · `.thrum/policy/philosophy.md` — the configs; read these, not prose
 
 ## Project-specific rules (already loaded)
 

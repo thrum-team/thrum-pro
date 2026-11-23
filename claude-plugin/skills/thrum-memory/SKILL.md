@@ -14,7 +14,8 @@ license: "Apache-2.0"
 
 ## When to use thrum memory vs. other stores
 
-Learned something future work should respect? → `thrum memory create` (pick a kind below).
+Learned something future work should respect? → prepare first (`thrum memory write prepare`, below), then keep,
+enhance or add; `thrum memory create` is the direct write (pick a kind below).
 
 Transient task state (in-progress work, current session context)? → your task tracker's notes, not memory.
 
@@ -108,6 +109,34 @@ thrum memory list --zoom oneline --kind agent_rule                  # all visibl
 ```
 
 ## Writing
+
+### Prepare before writing a NEW memory
+
+Before you create a new memory, look at what already exists. Compose the content exactly as you would for create, then
+run `prepare` and read the whole output (matches first, then the state and coverage):
+
+```bash
+thrum memory write prepare --kind <K> --scope <S> --title "<title>" --oneline "<one line>" \
+  --short "@/tmp/memory-body.md" --tag <slug>
+```
+
+It prints the close existing memories (id, revision, score), how complete the comparison was, and a NEXT STEP block
+with the three decisions. Choose one:
+
+- **keep** an existing memory: `thrum memory write decide keep <id> --prep <prep> --revision <rev>` creates nothing.
+- **enhance** it with an explicit patch:
+  `thrum memory write decide enhance <id> --prep <prep> --revision <rev> --tags-add <tag> [--full "@file"]`.
+  Tags are added, never replaced; only `--tags-remove` removes a tag.
+- **add** your proposal as a new memory:
+  `thrum memory write decide add --prep <prep>`. Add is always available, also at a
+  very high score and also when the state is not `ready`.
+
+Prepare is advice, never a veto: a high score does not forbid add, and nothing in the output blocks a write.
+
+A state other than `ready` (disabled, unavailable, partial) is NOT a clean result: the list may be incomplete, so say
+what you could not compare. Every decision takes a `--request-id` (printed before the call); reuse it to retry after a
+lost response and you get the same outcome. A stale revision means the memory changed since the advice: prepare again.
+`thrum memory create` still works unchanged for direct writes and scripts.
 
 ### Canonical write command
 

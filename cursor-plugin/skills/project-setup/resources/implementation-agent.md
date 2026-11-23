@@ -183,10 +183,9 @@ EOF
 of `thrum quickstart`. If it fails, check that the daemon is running with
 `thrum daemon status`.
 
-**Finding agent names:** Run `thrum team` to see all active agents and their
-names. Always send to agent names (e.g., `--to @coord_main`), not role names
-(e.g., `--to @coordinator`). Sending to a role fans out to ALL agents with that
-role.
+**Finding agent addresses:** Run `thrum team`. Use `--to @name` for a local
+agent and `--to @name@handle` for an agent on another daemon. Use the daemon ID
+if the handle is ambiguous. Address the specific agent to avoid role fan-out.
 
 Messages arrive in your pane. Check `thrum inbox --unread` at natural
 breakpoints. Never spawn a background listener.

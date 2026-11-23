@@ -7,28 +7,30 @@
 #   3. Matches rules whose triggers.path_globs match the path AND
 #      triggers.tools include the current tool.
 #   4. Consults per-session dedup file; skips already-injected rule IDs.
-#   5. Hard rules (enforcement=hard): emits permissionDecision=ask to stderr,
-#      exits 2.
-#   6. Soft rules (enforcement=soft): emits rule body to stdout as additional
-#      context, exits 0.
+#   5. Hard rules (enforcement=hard): emits permissionDecision=deny with the
+#      reason, plus the rule text as additionalContext, exits 0.
+#   6. Soft rules (enforcement=soft): emits the rule text as additionalContext,
+#      exits 0.
 #
-# Dedup file: ~/.thrum/var/hook-state/$CLAUDE_SESSION_ID/injected-rules
+# Dedup file: ~/.thrum/var/hook-state/s-<session_id>/injected-rules, where session_id
+# is stdin session_id, then CLAUDE_CODE_SESSION_ID, then CLAUDE_SESSION_ID.
+# With neither, nothing is recorded.
 # One rule ID per line. Created on first injection.
 #
-# Output contract:
-#   - Soft rules: plain text to stdout → CC routes hook stdout as
-#     additionalContext injected before the next model turn. No JSON envelope
-#     needed; hookEventName field is not required.
-#   - Hard rules: JSON to stderr with hookSpecificOutput.permissionDecision=ask
-#     + permissionDecisionReason. Exit 2 triggers the ask dialog. hookEventName
-#     is optional (omitted here).
+# Output contract (one JSON object on stdout, exit 0, nothing on stderr):
+#   - Soft rules: hookSpecificOutput.additionalContext carries the rule text;
+#     it lands in the model context as a system reminder.
+#   - Hard rules: hookSpecificOutput.permissionDecision=deny with
+#     permissionDecisionReason (the model sees it as the tool error), and the
+#     rule text in additionalContext. Never "ask": it shows the reason to nobody.
+#   - No match: no output.
 #
 # Plugin sync: this hook is wired in claude-plugin only. The build-time sync does
 # not propagate hooks to opencode/codex/cursor plugins (they use different hook
 # registration mechanisms). Manual step required per plugin when adopting.
 #
-# Smoke test: edit path/to/x.go → hard rule (safedb) fires ask.
-#             Edit again → dedup prevents re-fire (exits 0 for already-injected).
+# Smoke test: edit path/to/x.go → hard rule (safedb) fires deny.
+#             Edit again → dedup prevents re-fire (no output for already-injected).
 
 set -u
 # Fail-open trap: any unexpected error defaults to allow so this hook
@@ -76,12 +78,15 @@ fi
 # Fetch agent_rule records (zoom=full).
 rules_json=$(${_timeout_cmd} thrum memory list --kind agent_rule --zoom full --format json 2>/dev/null) || rules_json='{"items":[]}'
 
-# Per-session dedup file.
-session_id="${CLAUDE_SESSION_ID:-default}"
-dedup_dir="${HOME}/.thrum/var/hook-state/${session_id}"
-dedup_file="${dedup_dir}/injected-rules"
-mkdir -p "$dedup_dir" 2>/dev/null || { dedup_file=/dev/null; }
-touch "$dedup_file" 2>/dev/null || { dedup_file=/dev/null; }
+# Per-session dedup key: stdin session_id, then Claude environment fallback.
+# Without either, deliver without recording. The folder is s-<id> with "/" mapped to "_", so no id
+# can escape hook-state (a "..", "a/b" or "../x" id stays one folder inside it).
+session_id=$(printf '%s' "$input" | jq -r --arg e "${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}" 'if (.session_id // "") != "" then .session_id else $e end' 2>/dev/null) || session_id=""
+dedup_file=/dev/null
+if [ -n "$session_id" ]; then
+    dedup_file="${HOME}/.thrum/var/hook-state/s-${session_id//\//_}/injected-rules"
+    mkdir -p "${dedup_file%/*}" 2>/dev/null && touch "$dedup_file" 2>/dev/null || dedup_file=/dev/null
+fi
 
 # Match rules against file paths and tool.
 matched_hard=()
@@ -140,34 +145,48 @@ for i in $(seq 0 $((rule_count - 1))); do
     esac
 done
 
-# Emit soft rules as additional context (stdout, exit 0).
+# Split a "rule_id\x01title\x01body" entry. Parameter expansion, not read: read
+# stops at the first newline and would truncate a multi-line rule body.
+split_entry() {
+    rule_id=${1%%$'\x01'*}
+    local rest=${1#*$'\x01'}
+    title=${rest%%$'\x01'*}
+    body=${rest#*$'\x01'}
+}
+
+# Soft rules: record each as injected and join the texts into one context string.
+context=""
 if [ "${#matched_soft[@]}" -gt 0 ]; then
     for entry in "${matched_soft[@]}"; do
-        IFS=$'\x01' read -r rule_id title body <<< "$entry"
+        split_entry "$entry"
         printf '%s\n' "$rule_id" >> "$dedup_file"
-        printf 'Agent Rule: %s\n\n%s\n\n' "$title" "$body"
+        [ -n "$context" ] && context+=$'\n\n'
+        context+="Agent Rule: ${title}"$'\n\n'"${body}"
     done
 fi
 
-# Emit first hard rule as ask (stderr, exit 2).
-# Only one hard rule per invocation — Claude Code routes the first
-# permissionDecision=ask to the user and retries; subsequent rules
-# fire on the retry.
+# First hard rule (one per invocation; the rest fire on the retry): deny with the
+# reason. Soft texts ride in the same single JSON object.
 if [ ${#matched_hard[@]} -gt 0 ]; then
-    IFS=$'\x01' read -r rule_id title body <<< "${matched_hard[0]}"
+    split_entry "${matched_hard[0]}"
     printf '%s\n' "$rule_id" >> "$dedup_file"
     reason="Agent rule (enforcement=hard): ${title} -- ${body}"
-    if output=$(jq -n --arg reason "$reason" \
-        '{"hookSpecificOutput":{"permissionDecision":"ask","permissionDecisionReason":$reason}}' \
-        2>/dev/null); then
-        printf '%s\n' "$output" >&2
-        exit 2
+    [ -n "$context" ] && context+=$'\n\n'
+    context+="Agent Rule: ${title}"$'\n\n'"${body}"
+    # Each text is encoded as a JSON string on stdin (no NUL, so no reliance on jq -R
+    # NUL handling); argv is capped at 128 KiB per argument.
+    if output=$({ printf '%s' "$reason" | jq -Rs .; printf '%s' "$context" | jq -Rs .; } 2>/dev/null | jq -n 'input as $r | input as $c | {hookSpecificOutput:{hookEventName:"PreToolUse", permissionDecision:"deny", permissionDecisionReason:$r, additionalContext:$c}}' 2>/dev/null); then
+        printf '%s\n' "$output"
+        exit 0
     fi
-    # jq failed — emit anyway with best-effort string (tr-sanitized).
-    safe_reason=$(printf '%s' "$reason" | tr '\n' ' ' | tr '"' "'" | tr '\\' '/')
-    printf '{"hookSpecificOutput":{"permissionDecision":"ask","permissionDecisionReason":"%s"}}\n' \
-        "$safe_reason" >&2
-    exit 2
+    # jq failed — emit the deny anyway with a best-effort string (control chars stripped).
+    safe_reason=$(printf '%s' "$reason" | tr '\000-\037' ' ' | tr '"' "'" | tr '\\' '/')
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"%s"}}\n' "$safe_reason"
+    exit 0
 fi
 
+# Soft rules only: one JSON object carrying the joined rule text.
+if [ -n "$context" ]; then
+    printf '%s' "$context" | jq -Rs '{hookSpecificOutput:{hookEventName:"PreToolUse", additionalContext:.}}' 2>/dev/null
+fi
 exit 0

@@ -15,9 +15,8 @@
 #   Read roster from watch_params.json -> resolve each roster member's
 #   cross-daemon SSH-fallback target ONCE per run (thrum state
 #   agent_pool/topology; fail CLOSED on any gap, never guess a path) ->
-#   capture each member's pane (local `thrum tmux capture` first, ALWAYS —
-#   `thrum tmux capture <agent>` already reaches remote agents by name via
-#   the normal rpcrouter proxy; the SSH hop below is a resilience FALLBACK
+#   capture each member's pane (`thrum tmux capture` first, with a qualified
+#   address for remote roster members; the SSH hop below is a resilience FALLBACK
 #   for when that path is broken on the caller's side, e.g. known
 #   cross-daemon proxy-routing bug classes, never a fleet-wide-watching enabler in its own
 #   right, and never SSH-first) -> run each capture through `thrum detect
@@ -192,10 +191,92 @@ while IFS= read -r d_name; do
   DECLARED_INACTIVE+=("${d_name}")
 done < <(jq -r '[.expected_inactive_roster, .sleeping_roster][] | select(type == "array") | .[] | if type == "object" then (.agent_id // "") elif type == "string" then . else empty end' "${PARAMS_FILE}" 2>/dev/null)
 
+# This daemon's own ID: `daemon_id` from `thrum whoami --json`, read once, the first time a declared entry has to be
+# resolved. Absent (an old-form daemon) it stays empty: no row is qualified and every row is local.
+OWN_DAEMON_ID=""
+OWN_DAEMON_ID_READ=0
+WARNED_ROWS=""
+
+# resolve_entry <entry>: resolves an entry to an agent by the three matching rules against `thrum team <entry>
+# --offline --json`. Sets RES_STATUS (match|none|ambiguous) and RES_ID (the agent ID as this daemon qualifies it).
+# A full ID (has "@") matches exactly that ID; a bare name means this daemon's agent first (a row that carries
+# a boolean is_local is local exactly when it says so; without one, an agent_id with no "@" or a daemon half that is
+# this daemon; a bare row and its <name>@<this daemon> row are one
+# agent), else the single remote one; several distinct IDs are ambiguous (logged, nothing picked).
+RES_STATUS=none
+RES_ID=""
+resolve_entry() {
+  local entry="$1" res team_rows w
+  if [ "${OWN_DAEMON_ID_READ}" = 0 ]; then
+    OWN_DAEMON_ID_READ=1
+    OWN_DAEMON_ID="$(thrum whoami --json </dev/null 2>/dev/null | jq -r '.daemon_id // ""' 2>/dev/null)" || OWN_DAEMON_ID=""
+  fi
+  # A team row with is_local false whose id names this daemon: the flag wins (the row is not local); one stderr
+  # line per row, once per run.
+  team_rows="$(thrum team "@${entry}" --offline --json </dev/null 2>/dev/null)" || team_rows=""
+  if [ -n "${OWN_DAEMON_ID}" ]; then
+    while IFS= read -r w; do
+      [ -n "${w}" ] || continue
+      case "${WARNED_ROWS}" in
+        *"|${w}|"*) ;;
+        *)
+          WARNED_ROWS="${WARNED_ROWS}|${w}|"
+          printf "team row '%s' has is_local false but names this daemon\n" "${w}" >&2
+          ;;
+      esac
+    done <<<"$(printf '%s' "${team_rows}" | jq -r --arg own "${OWN_DAEMON_ID}" '.team.members[]? | select(.is_local == false) | (.agent_id // "") | select(endswith("@" + $own))' 2>/dev/null)"
+  fi
+  res="$(printf '%s' "${team_rows}" | jq -r --arg r "${entry}" --arg own "${OWN_DAEMON_ID}" '
+    [.team.members[]? | (.agent_id // "") as $id
+      | {id: $id,
+         name: ((.name // "" | select(. != "")) // ($id | split("@")[0])),
+         lcl: (if (.is_local | type) == "boolean" then .is_local else ((($id | contains("@")) | not) or ($own != "" and ($id | endswith("@" + $own)))) end)}
+      | .nid = (if ($id | contains("@")) or $own == "" or (.lcl | not) then $id else $id + "@" + $own end)] as $m
+    | if ($r | contains("@")) then
+        ([$m[] | select(.id == $r or .nid == $r)] | if length > 0 then "match " + .[0].nid else "none" end)
+      else
+        ([$m[] | select(.name == $r)]) as $c
+        | ([$c[] | select(.lcl) | .nid] | unique) as $l
+        | ([$c[] | select(.lcl | not) | .nid] | unique) as $x
+        | if ($l | length) == 1 then "match " + $l[0]
+          elif ($l | length) > 1 then "ambiguous " + ($l | join(" "))
+          elif ($x | length) == 1 then "match " + $x[0]
+          elif ($x | length) > 1 then "ambiguous " + ($x | join(" "))
+          else "none" end
+      end' 2>/dev/null)" || res="none"
+  case "${res}" in
+    "match "*) RES_STATUS=match; RES_ID="${res#match }" ;;
+    ambiguous*)
+      RES_STATUS=ambiguous
+      RES_ID=""
+      log "ambiguous roster entry '${entry}': candidates ${res#ambiguous }"
+      ;;
+    *) RES_STATUS=none; RES_ID="" ;;
+  esac
+}
+
+# The roster entry and each relevant declared entry are resolved to an agent by the same
+# rules, then the agent IDs are compared: a bare roster `alice` is excused by a declared `alice@d1` when d1 is this
+# daemon or alice is unique, not when it resolves to another daemon's alice; an ambiguous declared entry excuses
+# nothing. An entry that matches no team row (an agent that is gone, or the team unreadable) can only be excused
+# by the identical string.
 is_declared_inactive() {
-  local want="$1" d
+  local want="$1" d wst="" wid=""
   for d in ${DECLARED_INACTIVE[@]+"${DECLARED_INACTIVE[@]}"}; do
-    [ "${d}" = "${want}" ] && return 0
+    # Mixed forms can have different written names and still resolve to the same ID.
+    [[ "$d" != "$want" && "$d" != *@* && "$want" != *@* ]] && continue
+    [[ "$d" != "$want" && "$d" == *@* && "$want" == *@* ]] && continue
+    if [ -z "${wst}" ]; then
+      resolve_entry "${want}"
+      wst="${RES_STATUS}"
+      wid="${RES_ID}"
+      [ "${wst}" != ambiguous ] || return 1
+    fi
+    resolve_entry "${d}"
+    case "${wst}/${RES_STATUS}" in
+      match/match) [ "${wid}" != "${RES_ID}" ] || return 0 ;;
+      none/none) [ "${d}" != "${want}" ] || return 0 ;;
+    esac
   done
   return 1
 }
@@ -274,7 +355,7 @@ RESOLVED_SSH_REPO=()
 RESOLVED_COUNT=0
 
 resolve_roster_targets() {
-  local agent pool_json box i matched row_found ridx
+  local agent pool_json box i matched row_found ridx nmatch
   ridx=-1
   for agent in "${ROSTER[@]}"; do
     ridx=$((ridx + 1))
@@ -289,10 +370,19 @@ resolve_roster_targets() {
       RESOLVED_COUNT=$((RESOLVED_COUNT + 1))
       continue
     fi
-    if pool_json="$(thrum state get "agent_pool:${agent}" --json 2>>"${LOG_FILE}")"; then
+    if pool_json="$(thrum state get "agent_pool:${agent%%@*}" --json 2>>"${LOG_FILE}")"; then
       box="$(printf '%s' "${pool_json}" | jq -r '.entry.value.box // empty')"
       if [ -n "${box}" ]; then
+        nmatch=0
         for i in "${!TOPO_HOSTNAME[@]}"; do
+          [ "${TOPO_HOSTNAME[$i]}" = "${box}" ] && nmatch=$((nmatch + 1))
+        done
+        if [ "${nmatch}" -gt 1 ]; then
+          row_found=1
+          log "agent=${agent} WARN ${nmatch} topology rows match host=${box} -- ambiguous, fail-closed, no ssh fallback for this agent"
+        fi
+        for i in "${!TOPO_HOSTNAME[@]}"; do
+          [ "${nmatch}" -gt 1 ] && break
           if [ "${TOPO_HOSTNAME[$i]}" = "${box}" ]; then
             row_found=1
             if is_placeholder "${TOPO_REPO_PATH[$i]}" || is_placeholder "${TOPO_SSH_TARGET[$i]}"; then
@@ -364,8 +454,8 @@ CAPTURE_FAILED=0
 
 ROSTER_IDX=0
 for agent in "${ROSTER[@]}"; do
-  CAP1="${WORKDIR}/${agent}.cap1"
-  CAP2="${WORKDIR}/${agent}.cap2"
+  CAP1="${WORKDIR}/${agent//@/_}.cap1"
+  CAP2="${WORKDIR}/${agent//@/_}.cap2"
 
   # Exit status first, stdout second: a non-zero exit is a failed capture
   # even when stdout holds text (an error message is not a pane). A missing

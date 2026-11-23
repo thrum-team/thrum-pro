@@ -114,13 +114,14 @@ for send_rc in 0 1; do
 done
 
 # Delivery-time recheck: (a) read before delivery -> no send; (b) still unread
-# -> exactly one send with the fresh count; (c) pane never ready -> no send.
+# -> exactly one send with the fresh count; (c) a failing wait-pane-ready does
+# not matter (the helper no longer calls it) -> still exactly one send.
 for scenario in a b c; do
   OUT="${TMP}/rc-$scenario.stdout"; ERR="${TMP}/rc-$scenario.stderr"; SENDLOG="${TMP}/rc-$scenario.send"
   : > "$SENDLOG"; rm -f "${TMP}/rc-$scenario.n"
   recheck=2; wait_rc=0; want=1
   [[ "$scenario" != a ]] || { recheck=0; want=0; }
-  [[ "$scenario" != c ]] || { wait_rc=1; want=0; }
+  [[ "$scenario" != c ]] || { wait_rc=1; want=1; }
   status=0
   MOCK_TMUX=managed-session MOCK_SEND_LOG="$SENDLOG" MOCK_INBOX_N="${TMP}/rc-$scenario.n" \
     MOCK_RECHECK_UNREAD="$recheck" MOCK_WAIT_RC="$wait_rc" \

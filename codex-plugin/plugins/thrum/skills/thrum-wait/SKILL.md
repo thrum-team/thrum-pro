@@ -1,6 +1,8 @@
 ---
 name: thrum-wait
-description: Block until a message arrives
+description:
+  Block until a message arrives, only when not in tmux (tmux agents get messages
+  in the pane)
 # source: claude-plugin/commands/wait.md
 ---
 

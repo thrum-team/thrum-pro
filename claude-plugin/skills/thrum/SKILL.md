@@ -12,9 +12,8 @@ Run `thrum prime` for full session context (auto-injected by the SessionStart
 hook; also fires on post-compact resume). PreCompact is not registered — use
 `/thrum:compact` to save a snapshot before deliberately compacting.
 
-If the prime output was truncated, run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime`
-once and read its output fully)
-ONCE and read that file page by page; never re-run `thrum prime` to page through it.
+If the prime output was truncated, read the full briefing, page by page
+(the briefing file if a path was printed); a second prime cannot redeliver your restart snapshot.
 
 ## Quick Command Reference
 
@@ -55,7 +54,7 @@ thrum worktree create <name> --name <agent> --role R --module M    Create worktr
 thrum worktree setup <name> --name <agent> --role R --module M     Alias for worktree create
 thrum whoami                                          Show identity
 thrum team                                            List active agents
-thrum ping @name                                      Check if agent online
+thrum ping @name                                      Check agent process liveness (verdict alive = running)
 thrum who-has <file>                                  Who's editing a file
 ```
 

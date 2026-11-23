@@ -26,8 +26,8 @@ across N > 6 items, invoke `efficient-multi-agent-research` instead of bespoke
 dispatch — it handles partition + parallelization + consolidation.
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the
-> `choosing-subagent-models` skill (read `runtime.role_models` at the moment of use). Never let a sub-agent inherit your
-> own model.
+> `choosing-subagent-models` skill (run `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 ### Prefer `efficient-multi-agent-research` for multi-part research
 

@@ -16,8 +16,8 @@ This registers the agent, starts a session, and sets the work intent.
 - **Role** — Function category: `implementer`, `planner`, `reviewer`, `tester`,
   `coordinator`
 - **Module** — Work area: `auth`, `website`, `api`, `testing`, etc.
-- **Agent ID** — Format: `<name>:<role>:<module>` (e.g.,
-  `claude_impl:implementer:auth`)
+- **Agent ID** — After identity migration, the registered name and home daemon ID form `name@daemon-id`.
+  `thrum team` displays `name@handle` when the daemon has a unique handle. Unmigrated daemons use bare IDs.
 
 ## Identity Storage
 

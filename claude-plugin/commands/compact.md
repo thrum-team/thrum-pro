@@ -87,7 +87,7 @@ REPO=$(
   thrum agent worktree --authoritative 2>/dev/null
 ) || { echo "ERROR: cannot authoritatively resolve your worktree via the daemon. Refusing to fall back to cwd/git-toplevel — that would risk silently saving this snapshot to the wrong repo. Check daemon connectivity and retry."; exit 1; }
 [ -n "$REPO" ] || { echo "ERROR: thrum agent worktree --authoritative returned empty"; exit 1; }
-AGENT=$(thrum whoami --field agent_id) || { echo "ERROR: agent not registered"; exit 1; }
+AGENT=$(set -o pipefail; thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")') || { echo "ERROR: agent not registered"; exit 1; }
 [ -n "$AGENT" ] || { echo "ERROR: empty agent_id"; exit 1; }
 mkdir -p "${REPO}/.thrum/restart"
 SNAPSHOT="${REPO}/.thrum/restart/${AGENT}.md"
@@ -151,7 +151,7 @@ REPO=$(
   thrum agent worktree --authoritative 2>/dev/null
 ) || { echo "ERROR: cannot authoritatively resolve your worktree via the daemon. Refusing to fall back to cwd/git-toplevel — that would risk silently resuming from the wrong repo's snapshot. Check daemon connectivity and retry."; exit 1; }
 [ -n "$REPO" ] || { echo "ERROR: thrum agent worktree --authoritative returned empty"; exit 1; }
-AGENT=$(thrum whoami --field agent_id) || { echo "ERROR: agent not registered"; exit 1; }
+AGENT=$(set -o pipefail; thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")') || { echo "ERROR: agent not registered"; exit 1; }
 [ -n "$AGENT" ] || { echo "ERROR: empty agent_id"; exit 1; }
 SESSION_RAW=$(thrum whoami --field tmux_session)
 SESSION=${SESSION_RAW%%:*}
@@ -236,7 +236,13 @@ if [ "$SNAPSHOT_OK" = 1 ] && [ "$SESSION_OK" = 1 ]; then
     echo "Report this to your coordinator (or the operator if you are top-level) and stop; a human or coordinator must inspect the pane and submit or clear it."
     exit 1
   fi
-  RESUME_PROMPT="Compaction complete. Do these two steps in order. STEP 1 - Read your role preamble with the Read tool, IN FULL: ${REPO}/.thrum/context/${AGENT}_preamble.md. Read every section to the last line. Do not skip, skim or stop at the first screen, and do not go to step 2 until you have read all of it. It holds your role's instructions, including how messages reach you (in tmux, messages arrive in your pane; never start a message listener). STEP 2 - Only after step 1, follow the Resume Plan in the auto-injected briefing (# Previous Session Context). If it is missing, read ${SNAPSHOT} or the newest *-restart.md in .thrum/agents/${AGENT}/sessions/ of the main repo, then execute its numbered resume plan."
+  PREAMBLE="${REPO}/.thrum/context/${AGENT}_preamble.md"
+  RESUME_PROMPT="Compaction complete. Do these two steps in order. STEP 1 - Read your role preamble with the Read tool, IN FULL: ${PREAMBLE}. Read every section to the last line. Do not skip, skim or stop at the first screen, and do not go to step 2 until you have read all of it. It holds your role's instructions, including how messages reach you (in tmux, messages arrive in your pane; never start a message listener). STEP 2 - Only after step 1, follow the Resume Plan in the auto-injected briefing (# Previous Session Context). If it is missing, read ${SNAPSHOT} or the newest *-restart.md in .thrum/agents/${AGENT}/sessions/ of the main repo, then execute its numbered resume plan."
+  PREAMBLE_NOTICE='Your role preamble was loaded into your system prompt at launch; do not read it again unless it was re-rendered since.'
+  (set -o pipefail; perl -MPOSIX=setpgid -e '$p=fork // exit 1; $p or do { defined setpgid(0,0) or exit 1; exec @ARGV or exit 1 }; $SIG{ALRM}=sub { kill "KILL", -$p, $p }; alarm 1; waitpid($p,0) == $p or exit 1; exit($? != 0)' thrum agent preamble-in-prompt "$AGENT" </dev/null 2>/dev/null | cmp -s - <(printf '%s\n' "$PREAMBLE_NOTICE")) || PREAMBLE_NOTICE=""
+  if [ -n "$PREAMBLE_NOTICE" ]; then
+    RESUME_PROMPT="Compaction complete. $PREAMBLE_NOTICE Follow the Resume Plan in the auto-injected briefing (# Previous Session Context). If it is missing, read ${SNAPSHOT} or the newest *-restart.md in .thrum/agents/${AGENT}/sessions/ of the main repo, then execute its numbered resume plan."
+  fi
   if [ "$SEND_RC" -ne 0 ]; then
     echo "ERROR: thrum tmux send exited ${SEND_RC} — the daemon-routed self-send failed; it will NOT queue or deliver /compact."
     # Fail-loud fallback, NOT silent idle: attempt the compact command

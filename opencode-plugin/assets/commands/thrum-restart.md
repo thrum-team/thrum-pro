@@ -29,7 +29,7 @@ REPO=$(
   thrum agent worktree --authoritative 2>/dev/null
 ) || { echo "ERROR: cannot authoritatively resolve your worktree via the daemon. Refusing to fall back to cwd/git-toplevel — that would risk silently saving this snapshot to the wrong repo. Check daemon connectivity and retry."; exit 1; }
 [ -n "$REPO" ] || { echo "ERROR: thrum agent worktree --authoritative returned empty"; exit 1; }
-AGENT=$(thrum whoami --field agent_id) || { echo "ERROR: agent not registered"; exit 1; }
+AGENT=$(set -o pipefail; thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")') || { echo "ERROR: agent not registered"; exit 1; }
 [ -n "$AGENT" ] || { echo "ERROR: empty agent_id"; exit 1; }
 mkdir -p "${REPO}/.thrum/restart"
 ```
@@ -48,7 +48,8 @@ It carries the CRITICAL DISCIPLINE block and the 16-section structure with per-s
 
 #### Big picture heading — REQUIRED FIRST SECTION (write this BEFORE anything else)
 
-Every restart snapshot MUST begin with a section using this exact heading:
+The `ON RESUME` header line (snapshot-protocol) goes above `## 1. Big picture`.
+Every restart snapshot MUST then begin with a section using this exact heading:
 
 ```text
 ## 1. Big picture — what shipped this session
@@ -78,7 +79,7 @@ REPO=$(
   thrum agent worktree --authoritative 2>/dev/null
 ) || { echo "ERROR: cannot authoritatively resolve your worktree via the daemon. Refusing to fall back to cwd/git-toplevel — that would risk silently saving this snapshot to the wrong repo. Check daemon connectivity and retry."; exit 1; }
 [ -n "$REPO" ] || { echo "ERROR: thrum agent worktree --authoritative returned empty"; exit 1; }
-AGENT=$(thrum whoami --field agent_id) || { echo "ERROR: agent not registered"; exit 1; }
+AGENT=$(set -o pipefail; thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")') || { echo "ERROR: agent not registered"; exit 1; }
 [ -n "$AGENT" ] || { echo "ERROR: empty agent_id"; exit 1; }
 mkdir -p "${REPO}/.thrum/restart"
 SNAPSHOT="${REPO}/.thrum/restart/${AGENT}.md"
@@ -133,7 +134,7 @@ REPO=$(
   thrum agent worktree --authoritative 2>/dev/null
 ) || { echo "ERROR: cannot authoritatively resolve your worktree via the daemon. Refusing to fall back to cwd/git-toplevel — that would risk silently verifying the wrong repo's snapshot. Check daemon connectivity and retry."; exit 1; }
 [ -n "$REPO" ] || { echo "ERROR: thrum agent worktree --authoritative returned empty"; exit 1; }
-AGENT=$(thrum whoami --field agent_id) || { echo "ERROR: agent not registered"; exit 1; }
+AGENT=$(set -o pipefail; thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")') || { echo "ERROR: agent not registered"; exit 1; }
 [ -n "$AGENT" ] || { echo "ERROR: empty agent_id"; exit 1; }
 SESSION_RAW=$(thrum whoami --field tmux_session)
 SESSION=${SESSION_RAW%%:*}

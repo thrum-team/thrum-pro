@@ -277,7 +277,7 @@ if command -v jq >/dev/null 2>&1; then
         else 1 end' "$PREFLIGHT_OUTPUT" 2>/dev/null || echo 1)
       case "$STALE_UNREAD" in ''|*[!0-9]*) STALE_UNREAD=1 ;; esac
       if [ "$STALE_UNREAD" -gt 0 ]; then
-        bash "${SCRIPT_DIR}/stop-nudge-pane.sh" "$AGENT_ID" "$MSG_COUNT" "$PROJECT_DIR" "$TMUX_SESSION"
+        bash "${SCRIPT_DIR}/stop-nudge-pane.sh" "$AGENT_ID" "$MSG_COUNT" "$PROJECT_DIR" "$TMUX_SESSION" "${THRUM_DIR_RESOLVED}/var"
       fi
       write_idle
       exit 0
@@ -329,7 +329,8 @@ if [ "${THRUM_BACKGROUND_LISTENER:-1}" = 0 ]; then
 fi
 
 PID_VAR="$(resolve_thrum_dir "${THRUM_HOME:-$PROJECT_DIR}")/var"
-PID_FILE="$PID_VAR/${AGENT_ID}-listener.pid"
+AGENT_NAME="${AGENT_ID%%@*}"
+PID_FILE="$PID_VAR/${AGENT_NAME}-listener.pid"
 
 if [ ! -f "$PID_FILE" ]; then
   emit_block "Your background message listener is not running. Start it now."

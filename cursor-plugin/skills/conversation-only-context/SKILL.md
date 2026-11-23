@@ -15,12 +15,12 @@ persistent subagent that writes its result to a file.
 
 ## Wake procedure
 
-0. Caller binding decays to anonymous across a restart. Before the first mutating
-   thrum command, re-warm it: `thrum prime --to-file` — it writes the briefing to
-   a new file under the worktree's `.thrum/var` and prints only that path, **not**
-   the briefing back into context.
-1. Read the **full** prime briefing from the path step 0 printed, with the Read
-   tool, every page, in order. Name
+0. Caller binding decays to anonymous across a restart; the injected briefing
+   already re-warmed it, and a second prime cannot redeliver the restart snapshot,
+   so do not prime again. Only if no briefing was injected and your first mutating
+   thrum command is rejected as anonymous, run `thrum prime --to-file` once.
+1. Read the **full** briefing (the injected file, or the path step 0 printed) with
+   the Read tool, every page, in order. Name
    one load-bearing fact from the **middle** of it before taking any action.
 2. Execute the resume plan from the newest restart snapshot.
 3. Reconcile `thrum queue list` against `thrum state show personal_state:current`.
@@ -114,7 +114,7 @@ The model ban list lives in `choosing-subagent-models`. A costly tier is never y
   PANE EMITS NOTHING, so nobody can tell you are blocked. If you must background
   work, wait for the completion notification.
 - Every sub-agent YOU spawn gets an explicit `model:` chosen per `choosing-subagent-models`
-  (read `runtime.role_models`). The model ban list lives there. A costly tier is never yours.
+  (run `thrum config list-role-models`). A costly tier is never yours.
 - READ-ONLY git outside your own worktree. NEVER `checkout`/`reset`/`restore`/
   `stash`/`clean` in ANY directory — `stash` is one shared stack across all
   worktrees and the shared tree holds live agents' uncommitted state.

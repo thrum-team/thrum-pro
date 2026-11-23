@@ -38,7 +38,7 @@ REPO=$(
   thrum agent worktree --authoritative 2>/dev/null
 ) || { echo "ERROR: cannot authoritatively resolve your worktree via the daemon. Refusing to fall back to cwd/git-toplevel — that would risk silently saving this snapshot to the wrong repo. Check daemon connectivity and retry."; exit 1; }
 [ -n "$REPO" ] || { echo "ERROR: thrum agent worktree --authoritative returned empty"; exit 1; }
-AGENT=$(thrum whoami --field agent_id) || { echo "ERROR: agent not registered"; exit 1; }
+AGENT=$(set -o pipefail; thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")') || { echo "ERROR: agent not registered"; exit 1; }
 [ -n "$AGENT" ] || { echo "ERROR: empty agent_id"; exit 1; }
 mkdir -p "${REPO}/.thrum/restart"
 
@@ -57,6 +57,9 @@ no session end. Exit code 1.
 #### 2. Read the shared snapshot-composition partial
 
 Invoke the $thrum:snapshot-protocol skill and follow it.
+
+The snapshot's first line is the `ON RESUME` header from snapshot-protocol
+(above §1; its "(or: you WOKE from sleep)" wording covers sleep).
 
 Apply its Step 2 (compose your continuation) per the structure guidance.
 
@@ -186,7 +189,7 @@ tmux list-panes -a -F '#{pane_pid}' | grep -w <identity-pid>   # must return NOT
 # 3. Create, replacing the stale identity. Quickstart flags are REQUIRED.
 thrum tmux create <name> --cwd <worktree> \
   --name <agent-id> --role <role> --module <module> \
-  --model <model> --effort <effort> --force
+  --model <model> --effort <effort> --force   # from `thrum config list-role-models`
 
 # 4. Launch; the runtime re-binds the identity on start.
 thrum tmux launch <name>

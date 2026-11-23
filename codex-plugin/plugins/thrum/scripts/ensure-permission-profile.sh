@@ -26,8 +26,9 @@
 #   3. Filesystem READ to the redirect-resolved `.thrum` directory itself
 #      (Codex leg). A codex agent's own sandboxed Read-tool
 #      calls need this to load ordinary thrum monitor/support material —
-#      `.thrum/role_templates/*.md`, `.thrum/hotpath-gate.json`,
-#      `.thrum/philosophy.md`, `.thrum/config.json`, etc. In a worktree with
+#      `.thrum/role_templates/*.md`, `.thrum/config.json`, etc. The policy
+#      files (`.thrum/policy/`) are committed and live in the checkout, so
+#      they do not need this grant. In a worktree with
 #      a redirect, this directory lives OUTSIDE the current
 #      worktree/workspace root, exactly like the audit-log dir and daemon
 #      socket above, so it isn't covered by the profile's
@@ -253,8 +254,9 @@ if to_insert:
 #                       itself (Codex leg). This is what lets a
 #                       codex agent's own sandboxed Read-tool calls load
 #                       ordinary thrum monitor/support material
-#                       (.thrum/role_templates, .thrum/hotpath-gate.json,
-#                       .thrum/philosophy.md, .thrum/config.json, etc.)
+#                       (.thrum/role_templates, .thrum/config.json, etc.; the
+#                       committed .thrum/policy/ files live in the checkout and
+#                       need no grant)
 #                       without a permission denial — needed because, in the
 #                       worktree-redirect case, that directory lives OUTSIDE
 #                       the current worktree/workspace root the same way the

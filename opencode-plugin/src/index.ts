@@ -1,6 +1,5 @@
 import type { Plugin, PluginModule } from "@opencode-ai/plugin"
 import { installAssets, installPermissions } from "./installer.js"
-import { shellEnvHook } from "./hooks/shell-env.js"
 import { toolHooks } from "./hooks/tool-hooks.js"
 
 const TOOL_MAPPING = `
@@ -42,7 +41,6 @@ const server: Plugin = async (ctx) => {
   const tools = toolHooks({ directory: ctx.directory, worktree: ctx.worktree })
 
   return {
-    "shell.env": shellEnvHook(ctx),
     "tool.execute.before": tools.before,
     "tool.execute.after": tools.after,
     "experimental.chat.system.transform": async (

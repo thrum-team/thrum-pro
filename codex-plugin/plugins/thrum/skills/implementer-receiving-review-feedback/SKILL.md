@@ -49,7 +49,7 @@ fix: address review findings #1-#5 for <task-id>
 - #4 (LOW) — verified false positive: <one-line evidence>
 - #5 (LOW) — deferred per <decision/rationale>
 
-make test PASS (race), make lint PASS.
+The test and lint checks in `.thrum/policy/gates.json` PASS.
 
 Refs: <task-id>
 EOF
@@ -113,7 +113,7 @@ merges work the coordinator hasn't seen.
 
 1. Fix only what the findings ask for
 2. Don't refactor, rename, or "improve" surrounding code
-3. Verify tests pass with `-race`
+3. Verify tests pass on the norace lane (race lanes belong to the gates)
 4. Commit and ping with the per-finding disposition format from
    `implementer-status-and-handoff`
 

@@ -64,9 +64,8 @@ echo "You were just compacted. The SessionStart hook should auto-inject a briefi
 # Best-effort throughout, matching the rest of this hook: any failure here
 # (no identity file, no jq, `thrum send` itself failing) logs to stderr and
 # falls through to the remaining steps — it must never abort the hook.
-# The Read tool needs an absolute path; THRUM_HOME may be relative (default ".").
-_abs_home=$(cd "$THRUM_HOME" 2>/dev/null && pwd) || _abs_home="$THRUM_HOME"
 IDENTITIES_DIR="$THRUM_HOME/.thrum/identities"
+_abs_home=$(cd "$THRUM_HOME" 2>/dev/null && pwd) || _abs_home="$THRUM_HOME"
 IDENTITY_AGENT_ID=""
 if command -v jq >/dev/null 2>&1 && [ -d "$IDENTITIES_DIR" ]; then
   for _id_file in "$IDENTITIES_DIR"/*.json; do
@@ -116,10 +115,16 @@ else
   # macOS /bin/bash) mis-parses a quoted heredoc inside a command substitution
   # when its body holds an apostrophe, and the hook dies before sending. The
   # snapshot path is the only expansion here; its value is never re-parsed.
+  PREAMBLE_NOTICE='Your role preamble was loaded into your system prompt at launch; do not read it again unless it was re-rendered since.'
+  (set -o pipefail; perl -MPOSIX=setpgid -e '$p=fork // exit 1; $p or do { defined setpgid(0,0) or exit 1; exec @ARGV or exit 1 }; $SIG{ALRM}=sub { kill "KILL", -$p, $p }; alarm 1; waitpid($p,0) == $p or exit 1; exit($? != 0)' thrum agent preamble-in-prompt "$IDENTITY_AGENT_ID" </dev/null 2>/dev/null | cmp -s - <(printf '%s\n' "$PREAMBLE_NOTICE")) || PREAMBLE_NOTICE=""
   if [ -n "$COMPACT_SNAPSHOT" ]; then
-    COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1. If the Resume Plan is missing, read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool)."
+    COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1. If the briefing is missing, read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool)."
   else
-    COMPACT_MSG="You've been compacted. No snapshot found — please re-prime normally."
+    COMPACT_MSG="You've been compacted. REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_abs_home}/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1. No snapshot found: read the injected briefing in full; a second prime cannot redeliver it."
+  fi
+
+  if [ -n "$PREAMBLE_NOTICE" ]; then
+    COMPACT_MSG="You've been compacted. $PREAMBLE_NOTICE Follow the Resume Plan in the auto-injected briefing (# Previous Session Context).${COMPACT_SNAPSHOT:+ If the briefing is missing, read your snapshot at ${COMPACT_SNAPSHOT} (use the Read tool).} If the briefing and snapshot are unavailable, tell your operator; a second prime cannot redeliver them."
   fi
 
   if command -v thrum >/dev/null 2>&1; then
@@ -175,6 +180,7 @@ nudge_log() {
 
 _nudge_pre="$_abs_home/.thrum/context/${IDENTITY_AGENT_ID}_preamble.md"
 NUDGE_TEXT="REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${_nudge_pre}, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan in the auto-injected briefing (# Previous Session Context). The size of this briefing is not a reason to skip step 1."
+if [ -n "$IDENTITY_AGENT_ID" ] && [ -n "${PREAMBLE_NOTICE:-}" ]; then NUDGE_TEXT="$PREAMBLE_NOTICE Follow the Resume Plan in the auto-injected briefing (# Previous Session Context)."; fi
 NUDGE_TMUX_SESSION=$(thrum whoami --field tmux_session 2>/dev/null) || NUDGE_TMUX_SESSION=""
 if [ -z "$NUDGE_TMUX_SESSION" ] && [ -n "${TMUX_PANE:-}" ] && command -v tmux >/dev/null 2>&1; then
   # whoami could not name the session (daemon slow/down); the hook runs inside
@@ -269,7 +275,8 @@ if [ -n "$TMUX_SESSION" ] || [ -n "${TMUX:-}" ]; then
   exit 0
 fi
 
-PID_FILE="${THRUM_DIR_RESOLVED}/var/${AGENT_ID}-listener.pid"
+AGENT_NAME="${AGENT_ID%%@*}"
+PID_FILE="${THRUM_DIR_RESOLVED}/var/${AGENT_NAME}-listener.pid"
 if [ ! -f "$PID_FILE" ]; then
   echo "No listener running. Spawn a new listener." >&2
   exit 0

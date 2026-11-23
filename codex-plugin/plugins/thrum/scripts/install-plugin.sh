@@ -45,8 +45,12 @@ MANIFEST="${SOURCE_DIR}/.codex-plugin/plugin.json"
 CACHE_ROOT="${CODEX_HOME}/plugins/cache/${MARKETPLACE_NAME}/${PLUGIN_NAME}"
 MIGRATION_MARKER="${HOME}/.thrum/hooks/codex-legacy-hook-migration-complete"
 cache_stage=""
+codex_tmp=""
 
 cleanup_cache_stage() {
+  if [[ -n "${codex_tmp}" && -d "${codex_tmp}" ]]; then
+    rm -r -- "${codex_tmp}"
+  fi
   if [[ -n "${cache_stage}" && -d "${cache_stage}" ]]; then
     rm -r -- "${cache_stage}"
   fi
@@ -84,6 +88,21 @@ PY_MIGRATION_MARKER
 
 say() { printf '→ %s\n' "$*"; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+# run_codex <what> <cmd...>: stdout is discarded and stderr streams live on success; on failure die with rc and both streams.
+# The temp dir is removed here on success and by the EXIT trap on every other path.
+run_codex() {
+  local what="$1" rc
+  shift
+  codex_tmp="$(mktemp -d)" || die "mktemp failed"
+  "$@" 2>&1 >"${codex_tmp}/out" | tee "${codex_tmp}/err" >&2
+  rc="${PIPESTATUS[0]}"
+  if [[ "${rc}" -eq 0 ]]; then
+    rm -r -- "${codex_tmp}"
+    codex_tmp=""
+    return 0
+  fi
+  die "${what} failed (rc=${rc}): $(cat "${codex_tmp}/out" "${codex_tmp}/err")"
+}
 
 # 1. Prereqs
 command -v codex >/dev/null || die "codex CLI not found on PATH. Install codex first (https://github.com/openai/codex)."
@@ -115,12 +134,10 @@ fi
 # 2. Register or refresh the marketplace.
 if grep -q "^\\[marketplaces.${MARKETPLACE_NAME}\\]" "${CONFIG}"; then
   say "Marketplace ${MARKETPLACE_NAME} already registered; pulling latest revision."
-  codex plugin marketplace upgrade "${MARKETPLACE_NAME}" >/dev/null \
-    || die "codex plugin marketplace upgrade failed"
+  run_codex "codex plugin marketplace upgrade" codex plugin marketplace upgrade "${MARKETPLACE_NAME}"
 else
   say "Registering marketplace ${MARKETPLACE_NAME} from ${REPO}..."
-  codex plugin marketplace add "${REPO}" >/dev/null \
-    || die "codex plugin marketplace add failed"
+  run_codex "codex plugin marketplace add" codex plugin marketplace add "${REPO}"
 fi
 
 # The marketplace operation above is the first step that may prune old cache

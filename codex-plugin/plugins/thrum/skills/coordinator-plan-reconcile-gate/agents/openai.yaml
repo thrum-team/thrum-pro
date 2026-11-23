@@ -1,4 +1,4 @@
 interface:
   display_name: "Coordinator Plan Reconcile Gate"
-  short_description: "Use when parallel plans for one shared idea are all locked and about to feed project-setup, to check they compose at shared seams before any bead or worktree exists. Uses Fable, the one standing exception to the never-select-Fable rule."
-  default_prompt: "Use when parallel plans for one shared idea are all locked and about to feed project-setup, to check they compose at shared seams before any bead or worktree exists. Uses Fable, the one standing exception to the never-select-Fable rule."
+  short_description: "Use when parallel plans for one shared idea are all locked and about to feed project-setup, to check they compose at shared seams before any bead or worktree exists. Uses the reconcile model from runtime.role_models, the one standing exception to the orchestration-tier spawn rule."
+  default_prompt: "Use when parallel plans for one shared idea are all locked and about to feed project-setup, to check they compose at shared seams before any bead or worktree exists. Uses the reconcile model from runtime.role_models, the one standing exception to the orchestration-tier spawn rule."

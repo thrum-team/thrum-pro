@@ -4,9 +4,9 @@ description:
   "Use when you need to search past sessions, find what we decided about a
   topic, recall an earlier conversation, find where an agent discussed
   something, search agent history or transcripts, or work out which session
-  mentioned a word, error or command. Covers thrum transcript search, show and
-  reindex - count first, narrow, search with a small limit, read one window,
-  delegate broad questions to a cheap sub-agent."
+  mentioned a word, error or command. Covers thrum transcript search, show,
+  threads, subagent and reindex - count first, narrow, search with a small
+  limit, read one window, delegate broad questions to a cheap sub-agent."
 # source: claude-plugin/skills/transcript-search/SKILL.md
 ---
 
@@ -30,7 +30,8 @@ feature.
    back into your own context.
 
 Each hit prints as `agent · YYYY-MM-DD · runtime:session:seq · snippet`. Pass
-the `runtime:session:seq` to `show`.
+the `runtime:session:seq` to `show`. A hit starting with `[diff]` is a file path
+touched by an edit; `[subagent]` is text sent to or from a sub-agent.
 
 ### Scope
 
@@ -48,6 +49,20 @@ the `runtime:session:seq` to `show`.
 - `--by session` groups results by session. `--limit` defaults to 5; the maximum
   is 50.
 - `--json` prints the full response and lifts the 8 KiB output cap.
+
+### Sub-agent threads
+
+`thrum transcript threads <session>` lists the sub-agent threads of one session:
+`thread_key · name · status · depth N · K exchanges`. The session is the middle
+part of a hit's `runtime:session:seq`. `--agent` defaults to your own agent;
+`--runtime` names the session runtime; `-v` lists each thread's exchanges. A
+trailing `(incomplete: ...)` line means exchanges may be missing; the thread
+list itself is exact.
+
+`thrum transcript subagent <session> --thread KEY` reads one thread: the last 40
+events by default (`--tail N`, `0` for all), text capped by `--max-bytes`.
+`--exchange KEY` narrows it to one exchange. The footer prints the newest event
+time; pass it to `--after-ts` to read only what is new.
 
 ### Query syntax
 

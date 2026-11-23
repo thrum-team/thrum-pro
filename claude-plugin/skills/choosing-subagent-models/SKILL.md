@@ -1,6 +1,6 @@
 ---
 name: choosing-subagent-models
-description: "Use before launching a subagent, an Agent or Task call, or an Explore agent, and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."
+description: "Use before launching a subagent, an Agent or Task call, or an Explore agent, before any tmux agent launch on any runtime (`thrum worktree create --name`, `thrum tmux create`/`launch`), and on every review dispatch - code review, dual review, merge-gate reviewer. Picks the model and effort tier for the runtime you are running under."
 ---
 
 # Choosing Subagent Models
@@ -24,11 +24,11 @@ Model selection here is two steps, always in this order:
    sub-agent, only ever the operator's own agent or a skill that explicitly
    names it for one step).
 2. **Resolve that tier to a concrete `model:` + `effort:` for the runtime you
-   are actually running under** — via that runtime's own preset
-   (`RuntimePreset.TierModels`) or operator config (`runtime.role_models`);
-   see "Where the tier-model mapping lives" below. Never assume Claude's
-   model names (`sonnet`, `opus`, `haiku`) apply —
-   a Codex or OpenCode agent reading this same file has no such models, and
+   are actually running under** — by running
+   `thrum config list-role-models --runtime <runtime> --role <role>`;
+   see "Where the tier-model mapping lives" below. Never assume one runtime's
+   model names apply to another —
+   a Codex or OpenCode agent reading this same file has no Claude models, and
    passing one either errors or silently falls back to the runtime's own
    default (see "Never let an unresolved pin fall through" below).
 
@@ -36,8 +36,9 @@ Every subagent you spawn MUST pass an explicit, resolved `model:` (plus effort
 where the runtime supports it). Omitting it runs the subagent on YOUR model —
 the single biggest avoidable cost leak in agent work.
 
-Haiku 5.5 is eligible for summarization and mechanical work.
-Read the effective model and effort at use from `runtime.role_models`.
+Before choosing a model or effort for any spawn or launch, run
+`thrum config list-role-models --runtime <runtime of the agent you launch> --role <role of the agent you launch>`
+and pass exactly what it returns, never a value from memory or prose.
 
 ### Read the tiers at the moment of use
 
@@ -46,46 +47,52 @@ skill and the live config do.** Read the tier when you are about to spawn or
 launch, never from memory or from a copied example:
 
 ```bash
-jq -r '.runtime.role_models' .thrum/config.json
+thrum config list-role-models --runtime <runtime> --role <role>
+thrum config list-role-models --runtime <runtime> --role <role> --json   # for scripts
 ```
 
-Launching with `--role` and no `--model` resolves the role default
-automatically. When pinning `--model` or `--effort`, read the effective values
-from `runtime.role_models`; otherwise use the named role's built-in default or
-the runtime's own preset.
+The command returns the stored model and effort for that runtime and role, or the built-in default when none is
+stored. Omit `--runtime` to use the project's primary runtime.
+
+A runtime's preset tiers: `thrum runtime show <runtime> --json` (the `tier_models` object).
+
+A model name from a requester is not an ID: resolve it against
+`thrum runtime show <runtime> --json` and the runtime's own config before passing it to `--model`.
+
+Pin `--model` and `--effort` on every launch with the values the command returns. A model a user enters is passed as
+entered.
 
 ### Agent tiers
 
 Effort tier governs whether an agent does the hard thing or the expedient thing.
-These are the three tiers, with Claude's built-in role defaults shown as
-concrete values. **If you are running under a different runtime, resolve the
-role from that runtime's preset (`RuntimePreset.TierModels`) or
-`runtime.role_models`, not from the Claude defaults:**
+These are the three tiers and the roles that use them. No model or effort value
+is written here: **run `thrum config list-role-models --runtime <runtime> --role <role>`
+(add `--json` for scripts; omit `--runtime` for the project's primary runtime)
+at the moment of use and pass exactly the model and effort it returns.** The
+command resolves any runtime:
 
-| Role | Tier | Claude built-in default |
-| ---------------------------- | ------------- | ------------------- |
-| **Coordinator** | `orchestration` | **`claude-opus-5-5` / low** |
-| **Orchestrator** | `orchestration` | **`claude-opus-5-5` / low** |
-| **Brainstormer** | `orchestration` | **`claude-opus-5-5` / medium** |
-| **Implementer** | `judgment` | **`claude-haiku-5-5` / high** |
-| **Researcher** | `judgment` | **`claude-sonnet-5-5` / high** |
-| **Verifier / reviewer** | `judgment` | **`claude-sonnet-5-5` / medium** |
-| **Role-neutral sub-agent** (investigation, grep, mechanical) | `mechanical` | **`claude-sonnet-5-5` / low** |
+| Role | Tier |
+| ---------------------------- | ------------- |
+| **Coordinator** | `orchestration` |
+| **Orchestrator** | `orchestration` |
+| **Brainstormer** | `orchestration` |
+| **Implementer** | `judgment` |
+| **Researcher** | `judgment` |
+| **Verifier / reviewer** | `judgment` |
+| **Role-neutral sub-agent** (investigation, grep, mechanical) | `mechanical` |
 
 - **`mechanical` tier (role-neutral sub-agents)** — investigation, grep-and-collect,
-  file maps, lint runs, and mechanical tasks. Claude's built-in role-neutral
-  default is Sonnet 5.5 / low. Read configured overrides from
-  `runtime.role_models`; use another runtime's own `TierModels` values.
-- **`judgment` tier (implementers, researchers, verifiers, reviewers)** — use the
-  named-role defaults above: implementers use Haiku 5.5 / high (Sonnet 5.5 /
-  medium for security-touching, epic or complicated work: auth, TLS, pairing,
-  credentials, encryption, licensing, privacy, several subsystems, or over ~300
-  production lines), researchers use
-  Sonnet 5.5 / high, and verifiers/reviewers use Sonnet 5.5 / medium. Keep
-  reviewers at medium or higher.
-- **`orchestration` tier (coordinators, orchestrators, brainstormers)** — use the
-  named-role defaults above: coordinators and orchestrators use Opus 5.5 / low;
-  brainstormers use Opus 5.5 / medium. Operators configure orchestrator defaults.
+  file maps, lint runs, and mechanical tasks. Take the role-neutral row from
+  `thrum config list-role-models`.
+- **`judgment` tier (implementers, researchers, verifiers, reviewers)** — take
+  each role's row from `thrum config list-role-models`. Security-touching, epic
+  or complicated work (auth, TLS, pairing, credentials, encryption, licensing,
+  privacy, several subsystems, or over ~300 production lines) still uses the
+  implementer row. Keep reviewers at the medium-or-higher setting the config
+  gives the reviewer row.
+- **`orchestration` tier (coordinators, orchestrators, brainstormers)** — take
+  each role's row from `thrum config list-role-models`. Operators configure
+  orchestrator defaults.
 - **`orchestration` tier is NOT your call to spawn.** Allowed only when (a) the
   operator explicitly asked for a deep review or prose review in this task, or
   (b) a skill you are running prescribes the orchestration tier for the
@@ -95,8 +102,8 @@ role from that runtime's preset (`RuntimePreset.TierModels`) or
 
 ## Worked examples — LITERAL ARGUMENTS, AND EFFORT IS TOOL-DEPENDENT
 
-**Pin `model` on every spawn, using the value your runtime's own preset
-(`RuntimePreset.TierModels`) or `runtime.role_models` resolves the tier to.**
+**Pin `model` on every spawn, using the value
+`thrum config list-role-models --runtime <runtime> --role <role>` returns.**
 **Pass
 `effort` wherever the mechanism exposes it** — some mechanisms don't. Syntax per
 mechanism — re-check the schema in front of you rather than restating from
@@ -110,15 +117,14 @@ memory, because it can change:
 | **`thrum tmux create` / `launch`** | ✅ `--model` | ✅ `--effort` — pass on BOTH |
 | **Other runtimes' own spawn mechanism** | ✅ settable | runtime-dependent — check its own schema |
 
-**Below is ONE fully concrete example — what a `judgment`-tier spawn looks
-like once resolved for Claude's own Agent tool (which takes no `effort`
-argument).** It is Claude-specific syntax with a Claude-specific model string;
-if you are running under a different runtime, use that runtime's own spawn
-mechanism and its own resolved model+effort from `RuntimePreset.TierModels` /
-`runtime.role_models` instead of copying this literal string.
+**Below is ONE example of a `judgment`-tier spawn through Claude's own Agent
+tool (which takes no `effort` argument).** It is Claude-specific syntax; the
+`model` value comes from `thrum config list-role-models`. Under a different
+runtime, use that runtime's own spawn mechanism and its own resolved
+model+effort.
 
 ```python
-Agent(subagent_type="general-purpose", model="sonnet",
+Agent(subagent_type="general-purpose", model="<from thrum config list-role-models>",
       description="Code-quality review of <branch>",
       prompt="...")
 ```
@@ -129,15 +135,8 @@ YOUR runtime — never a bare Claude name assumed universal. Where effort is not
 settable, carry the intent through the agent definition, the Workflow opts, or
 the tmux launch flags instead.
 
-An agent definition can also carry a default (Claude example — resolve to
-your own runtime's `mechanical`-tier value if you are not Claude):
-
-```yaml
-# claude-plugin/agents/message-listener.md (non-tmux fallback only)
-name: message-listener
-model: sonnet
-effort: low
-```
+An agent definition carries no `model:` or `effort:` line; the dispatcher reads
+`thrum config list-role-models` and passes the row for that agent explicitly.
 
 **Workflow `agent()` — effort IS a literal argument. Pass it, resolved for
 your runtime's tier:**
@@ -146,13 +145,13 @@ your runtime's tier:**
 agent(prompt, { model, effort })   // `model`/`effort` = your runtime's resolution
                                     // of the `judgment` tier (reviewer/implementer)
                                     // or the `mechanical` tier (sub-agent) —
-                                    // resolve via RuntimePreset.TierModels /
-                                    // runtime.role_models for the literal values
+                                    // run `thrum config list-role-models`
+                                    // for the literal values
 ```
 
 **THE DIRECTIVE, imperative and not a comment: REVIEWERS RUN THE `judgment`
-TIER, WHICH IS MEDIUM EFFORT ON EVERY RUNTIME THAT HAS AN EFFORT KNOB.** Pass
-the resolved effort literally under Workflow, in the agent definition, or on
+TIER, AT THE EFFORT THE REVIEWER ROW OF `thrum config list-role-models` GIVES.**
+Pass the resolved effort literally under Workflow or on
 `thrum tmux create`/`launch` (the Agent tool takes no `effort`, so `model`
 alone must still be the `judgment`-tier value there). Never dispatch a
 reviewer "from memory", and never dispatch one at the mechanical tier.
@@ -161,7 +160,7 @@ reviewer "from memory", and never dispatch one at the mechanical tier.
 must be checked against the schema in front of you.
 
 Never select the `orchestration` tier on your own judgment — use the
-`judgment` tier's configured value from `runtime.role_models`.
+`judgment` tier's value from `thrum config list-role-models`.
 
 ## Where the tier-model mapping lives
 
@@ -170,15 +169,14 @@ use.** The three semantic tiers (`mechanical` / `judgment` / `orchestration`)
 are the same across every runtime; only the concrete model+effort differs per
 runtime, and that mapping lives in exactly two places:
 
-- **The runtime's own preset** (the `TierModels` field of the runtime preset
-  schema) — the machine-checked, per-runtime tier→model
-  table. A runtime with no entry for a tier has no fleet-configured value for
-  it and resolves to nothing rather than inheriting another runtime's model.
-- **`runtime.role_models` in `.thrum/config.json`** — operator configuration
-  for this project, which always outranks the preset's tier table.
+- **The built-in defaults** — one model and effort per runtime and role,
+  updated with each thrum release.
+- **The project's stored `role_models` entries** — operator configuration
+  for this project, which always outranks the built-in defaults.
 
-**If you are running under Claude**, use the role-specific model and effort
-defaults in the Agent tiers table unless `runtime.role_models` overrides them.
+`thrum config list-role-models --runtime <runtime> --role <role>` merges the two
+and returns one answer for any runtime and role.
+
 Researchers, implementers, verifiers, and reviewers use `judgment`; role-neutral
 children use `mechanical`. A brainstormer's children use `mechanical` unless
 they are reviewers, which use `judgment`.
@@ -239,22 +237,22 @@ that stops at depth 1 is absent where the work happens.
   work, wait for the completion notification.
 - Every sub-agent YOU spawn gets an explicit `model:`, resolved for your
   runtime's tier — `mechanical` (rote/find-replace) or `judgment` (real
-  analysis). Read the effective model and effort from `runtime.role_models` at
-  use. The `orchestration` tier is never yours to spawn.
+  analysis). Run `thrum config list-role-models` for the effective model and
+  effort at use. The `orchestration` tier is never yours to spawn.
 - READ-ONLY git outside your own worktree. NEVER `checkout`/`reset`/`restore`/
   `stash`/`clean` in ANY directory — `stash` is one shared stack across all
   worktrees and the shared tree holds live agents' uncommitted state.
 - Pair every zero/empty result with a control that MUST return non-zero.
 ```
 
-⚠️ Never let a child take **"don't ask again"** on a modal — it removes the only
-signal this condition produces.
+⚠️ Never let a child take **"don't ask again"** on the poll-loop or until-loop modal above — it removes the only
+signal that condition produces.
 
 ### Cheap subagents → fan out, don't pile up
 
-Because Haiku 5.5 supports summarization and mechanical sub-agent work, prefer
+Because mechanical sub-agent work is cheap (see the `mechanical` tier above), prefer
 MANY small parallel subagents over one agent handed a pile of tasks. Read the
-effective model and effort from `runtime.role_models` at dispatch. When research or
+effective model and effort from `thrum config list-role-models` at dispatch. When research or
 investigation has independent parts, partition them in parallel (use the
 `efficient-multi-agent-research` skill) — smaller scopes are cheaper, run
 concurrently (faster), and keep each subagent's context tight. One subagent
@@ -263,7 +261,7 @@ given ten tasks is the anti-pattern.
 ## ⚠️ The pin-verification command LIES — do not trust it
 
 **This section's examples are Claude-specific** (`thrum tmux capture`'s footer
-format, and the historical Sonnet/Opus incident it documents) because that is
+format, and the historical wrong-model incident it documents) because that is
 where this defect was measured — but the underlying rule generalizes: verify
 a pin by reading the runtime's own RESOLVED status output, never a stored
 "configured" value, whichever runtime you're on.
@@ -271,8 +269,8 @@ a pin by reading the runtime's own RESOLVED status output, never a stored
 `thrum agent runtime-config get <agent>` reports the **configured** value, not the
 **resolved** one.
 
-An implementer ran Opus 4.8 while both the launch flag (`--model sonnet`) and
-`runtime-config get` confirmed sonnet — the check that exists to catch a bad pin
+An implementer ran a different model than pinned while both the `--model` launch flag and
+`runtime-config get` confirmed the pinned value — the check that exists to catch a bad pin
 is itself a false green.
 
 This is the same defect class as every other surface that reports a value it never
@@ -281,17 +279,16 @@ reporting green off a path that cannot fail; `make ci` swallowing a critical CVE
 a warning).
 
 **So: after launching an agent, verify with `thrum tmux capture --format=annotated`
-(or `--format=json` for scripting).** It parses the footer server-side into
-NBSP-free fields — no positional-window guessing, no NBSP grep trap, and the
-header states `ok`/`FAILED` explicitly instead of leaving you to infer a failure
-from empty stdout:
+(or `--format=json` for scripting).** Capture reads the model from the footer
+and gets transcript-runtime context from contextpoll. The header reports
+`ok` or `FAILED`.
 
 ```bash
 thrum tmux capture <agent-name> --format=annotated --lines 12
 # ━━━ CAPTURE ok · agent=<name> · runtime=claude · lines=35 ━━━
 # <pane content, verbatim>
 # ─── FOOTER (parsed, NBSP-normalized) ───
-# Model: Sonnet 5 | Ctx: 478.3k | Ctx Used: 48.0%
+# Model: <resolved model> | Ctx: 478.3k | Ctx Used: 48.0%
 # ━━━ END CAPTURE ━━━
 ```
 
@@ -308,6 +305,9 @@ thrum tmux capture <agent-name> --format=json | python3 -c \
 Still check the exit status before trusting either form — a FAILED capture exits
 nonzero and the annotated header says `FAILED`, but don't discard that signal by
 piping straight into something that only inspects stdout.
+
+Also read the pane text for the runtime's own rejection (an unsupported-model message);
+the status line or footer can echo a rejected pin.
 
 That is the runtime reporting its RESOLVED config, and it is the only check that has
 ever produced a true negative on this defect. If it disagrees with the pin, report it —
@@ -345,8 +345,8 @@ asynchronously, so a create-only pin can lose the race and leave the CLI value e
 launch **by construction**.
 
 ⚠️ **And any FIX here must be verified with a pin the role default would NOT produce.**
-Pin an implementer to `claude-opus-5-5` / medium while its built-in default is
-`claude-haiku-5-5` / high; assert both values to prove the pin landed.
+Pin an implementer to a model and effort that differ from the implementer row of
+`thrum config list-role-models`; assert both values to prove the pin landed.
 
 ## Paste blocks for child prompts
 
@@ -370,6 +370,12 @@ Paste these verbatim into a child prompt when the work involves the named activi
 --- END TESTS ---
 
 --- WORKTREE TEARDOWN & SALVAGE ---
+
+- Retire an implementer and remove its worktree yourself only when its epic or plan has no further task
+  for it; do not defer that to a later coordinator audit. Between tasks of the same epic or plan, keep
+  the implementer running and give it the next task; remove only the worktree of a branch that has
+  landed. Keep the planned number of implementers filled: replace a seat that stalls or retires. Scope:
+  implementers only; brainstormer and researcher worktrees are kept.
 - Before any teardown, enumerate with both flags: `git -C <wt> status --porcelain --untracked-files=all --ignored -- .thrum`.
 - Salvage anything found to a durable path (not /tmp), one subdirectory per worktree, filenames path-flattened.
 - Never glob `.thrum/context/*.md`; salvage exact named files only, and assert no `project_state.md` landed in any salvage output.

@@ -1,6 +1,6 @@
 ---
 name: wait
-description: Block until a message arrives
+description: Block until a message arrives, only when not in tmux (tmux agents get messages in the pane)
 argument-hint: '[--timeout 30s]'
 ---
 

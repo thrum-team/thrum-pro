@@ -85,8 +85,9 @@ batch — the visual tree exposes inversion immediately. For bulk epic creation
 bd is fully concurrent-safe.
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and
-> effort per the `choosing-subagent-models` skill (read `runtime.role_models` at
-> the moment of use). Never let a sub-agent inherit your own model.
+> effort per the `choosing-subagent-models` skill (run
+> `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 ### Use `bd close --suggest-next` to surface unblocked work
 
@@ -124,20 +125,23 @@ snapshot" reaps live agents. Never batch-reap `git worktree list` on a proxy
 heuristic. The reap preconditions (HEAD containment, only-copy untracked state,
 direct-death observation) are mandatory.
 
-**Why:** `thrum worktree teardown <name>` does exactly what its name says — it
-tears down the **worktree** — and is intentionally not coupled to runtime
-lifecycle. If the agent's runtime is still running in tmux when you teardown,
-the runtime keeps executing zombie-style with its cwd pointing at a deleted
-directory. The next operation the user attempts in that tmux pane fails
-confusingly, and they have to manually `tmux kill-session` and exit.
+**Why:** `thrum worktree teardown <name>` removes the **worktree** and refuses a
+LIVE one. Live means a process with its cwd or argv inside, a live tmux pane in
+any socket in the default tmux socket directory, or a live agent-scratchpad
+owner; if liveness cannot be determined it refuses too. Teardown itself makes a
+best-effort kill of the agent's tmux session, but only after the liveness check
+passes, so a live session refuses it: kill first. `--even-if-live` proceeds
+despite liveness (that kill is then what ends a live agent); `--force-unsafe`
+alone does not bypass the refusal.
 
 **How to apply:** When recycling an agent (epic done, agent should be removed),
-run the two-command destroy sequence **in this order**:
+run this sequence **in this order**:
 
 ```bash
-thrum tmux kill <session>          # kills tmux + runtime first
-thrum worktree teardown <name>     # then retires the agent + removes the worktree (salvage first)
-thrum agent delete <agent>         # SEPARATE reap, after the worktree is gone
+thrum tmux kill <session>                  # kills tmux + runtime first; verify it is gone
+thrum agent set-phase retired --agent <name>   # keeps the registry row
+thrum worktree teardown <name>             # removes the worktree (salvage first)
+thrum agent delete <agent>                 # SEPARATE reap, after the worktree is gone
 ```
 
 `worktree teardown` does NOT delete the agent: it is preparation for deleting
@@ -147,25 +151,28 @@ UI; visible with `--include-inactive` / `--phase retired`) until
 whose linked worktree still exists or whose process (pid/tmux) is live, and
 refuses coordinators; correct order is teardown (with salvage) THEN delete.
 
-Sanity-check: after teardown, `tmux list-sessions` should NOT show the agent's
-session. If it does, the runtime was never killed and step 1 was skipped.
+Sanity-check: before teardown, `tmux list-sessions` must NOT show the agent's
+session. If teardown refuses as live, kill the session and retry; use
+`--even-if-live` only for a deliberate override.
 
 For batch recycling (multiple agents at once), kill them all first, then
 teardown all worktrees — keeps the daemon's session state consistent across the
 operation. For graceful shutdown of in-flight agents, send a thrum message
-asking them to save state, wait for ack, then run the two-command sequence.
-Done/idle agents on closed epics need no graceful shutdown.
+asking them to save state, wait for ack, then run the sequence above. Done/idle
+agents on closed epics need no graceful shutdown.
 
-### Expect orchestrators to remove implementer worktrees at completion — do not defer this to a coordinator audit
+### Expect orchestrators to remove implementer worktrees when the epic or plan has no further task for the implementer
 
 **Why:** Implementer worktrees used to accumulate because removal was left for a
 later coordinator sweep that never actually reduced the count — a
 hand-maintained cleanup rots. The fix puts ownership on the agent that actually
-knows the work is finished: the **orchestrator** removes an implementer's
-worktree as soon as that implementer reports DONE and its branch is
-merged/pushed. This is not the coordinator's own destroy sequence above (that
-section is for agents the coordinator manages directly) — it is the standing
-expectation you hold orchestrators to for the implementers **they** launched.
+knows the work is finished: the **orchestrator** retires the implementer and
+removes its landed worktree only when the epic or plan has no further task for
+it. Between tasks, keep the implementer running and assign the next task. Fill
+the planned implementer seats by replacing seats that stall or retire. This is
+not the coordinator's own destroy sequence above (that section is for agents the
+coordinator manages directly) — it is the standing expectation you hold
+orchestrators to for the implementers **they** launched.
 
 **How to apply:**
 
@@ -184,10 +191,9 @@ expectation you hold orchestrators to for the implementers **they** launched.
 - **Don't re-teardown what's already gone.** Once an orchestrator has retired
   the implementer and removed its worktree, treat that worktree as handled — you
   are not the second layer of cleanup for it. If you find an implementer
-  worktree that is DONE, durably-on-origin, and still present, that is a finding
-  against the orchestrator's discipline (raise it), not a task for you to
-  silently absorb.
-- 🔴 **But the pushed branch is NOT "the only artifact that matters".** Authored
+  worktree that is durably-on-origin and still present after the epic or plan
+  has no further task for the implementer, raise it with the orchestrator.
+- 🔴 **Salvage authored agent state before removing the worktree.** Authored
   agent state lives UNTRACKED in the worktree's `.thrum/agents/<self>/`, so it
   is **not on the branch** — every ancestry/push check reads clean while a
   teardown destroys it. **Salvage-before-remove is required, and if you are the

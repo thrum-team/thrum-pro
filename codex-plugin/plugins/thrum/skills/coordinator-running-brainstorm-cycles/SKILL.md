@@ -60,8 +60,9 @@ plan→prompt translation errors before the implementer executes against them.
 ### Subagent model selection
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and
-> effort per the `choosing-subagent-models` skill (read `runtime.role_models` at
-> the moment of use). Never let a sub-agent inherit your own model.
+> effort per the `choosing-subagent-models` skill (run
+> `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 #### Prefer `efficient-multi-agent-research` for multi-part research
 

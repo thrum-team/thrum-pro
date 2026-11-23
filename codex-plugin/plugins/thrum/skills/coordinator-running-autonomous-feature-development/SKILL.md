@@ -113,14 +113,14 @@ outlive its author and later be enforced as if it were the human's mandate.
 through a standing orchestrator.**
 
 The reason, in one line: orchestrators own the implementer lifecycle and the
-`--model` pin (from `runtime.role_models`, per `choosing-subagent-models`);
-standing one up yourself risks the implementer inheriting your own model. Your
-lane is dispatch-decision + gate + merge. Full dispatch mechanics live in
-**`coordinator-dispatching-work`**.
+`--model` pin (from `thrum config list-role-models`, per
+`choosing-subagent-models`); standing one up yourself risks the implementer
+inheriting your own model. Your lane is dispatch-decision + gate + merge. Full
+dispatch mechanics live in **`coordinator-dispatching-work`**.
 
-If `runtime.role_models` has no entry for the role, never ask the user for a
-model or effort. Launch without `--model` and `--effort` so the runtime's own
-default applies.
+Never ask the user for a model or effort: run
+`thrum config list-role-models --runtime <runtime> --role <role>` and pass
+exactly what it returns.
 
 **Recovery:** if an implementer was ever stood up directly, **tear it down
 before handing to the orchestrator.** Do not let the orchestrator adopt a

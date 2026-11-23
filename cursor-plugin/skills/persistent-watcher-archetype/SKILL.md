@@ -16,8 +16,8 @@ resources/start-watcher.sh <name> --role watcher|steward --parent <agent|user:NA
   [--cadence-active 5m] [--cadence-idle 10m] [--runtime <runtime>] [--owner <user>] [--restart-ctx-pct 50]
 ```
 
-- `--model` and `--effort` have no default; the script refuses without them. Read the tier for the role with
-  `jq -r '.runtime.role_models' .thrum/config.json`. A small model at low effort is enough for most rosters.
+- `--model` and `--effort` have no default; the script refuses without them. Read the model and effort with
+  `thrum config list-role-models --runtime <runtime> --role watcher`. A small model at low effort is enough for most rosters.
 - It checks everything first and creates nothing if any check fails: a free name, a resolvable parent, a non-empty
   roster whose members all resolve, a cadence of at least one minute, a pinned model and effort, and an owner. The owner
   is `--owner`, else the first `@user:` entry of `permission_supervisors` in `.thrum/config.json`; with neither, the
@@ -42,6 +42,9 @@ dies: the `pane-watch` monitor keeps ticking and reports the failure to the
 dead agent. A coordinator restarts it (see "Starting a watcher or steward").
 
 ## Your mission
+
+Liveness rule: an agent is alive only when `thrum ping` returns verdict `alive`; `unverified` and
+`owning-daemon-unreachable` are unknown, never treat them as alive or dead.
 
 Read `.thrum/agents/<you>/watch_params.json` at the top of every cycle. For
 every agent in your `roster`:
@@ -190,7 +193,10 @@ The procedure, every time, no shortcuts:
    - This send is QUEUED behind the conservative monitor-silence wait, not
      instant — don't re-send while waiting it out. A send that exits 3 (Enter
      WITHHELD) or 4 (verdict unknown) must NOT be retried blind — capture the
-     pane first.
+     pane first. A `--keys` send prints a receipt naming the executing daemon and
+     pane and exits 5 when that daemon saw the pane NOT change: the keys were
+     sent, so do not resend blindly — re-capture and judge; 5 is not a transport
+     failure and not a reason to escalate to SSH.
 4. **Re-capture and verify the modal is actually gone.** If it's still there,
    don't give up and don't loop blindly retrying the same keys — work up an
    escalating transport ladder, re-capturing to verify after EACH attempt:
@@ -460,9 +466,8 @@ Load the `using-monitors` skill before you arm, edit or stop this monitor.
 **A ready-to-use script ships with this skill** —
 `resources/thrum-watch-pane-capture.sh` (paired with `resources/thrum-capture-fallback.sh`).
 It is generic and roster-driven: it reads your own
-`watch_params.json`, captures each roster member's pane (local
-`thrum tmux capture` first, always — that already reaches remote agents by name via the
-normal rpcrouter proxy; see "SSH fallback" below for what the second script
+`watch_params.json`, captures each roster member's pane (`thrum tmux capture`
+first, using a qualified agent address for remote roster members; see "SSH fallback" below for what the second script
 is for), runs `thrum detect --category permission`, applies the two-capture
 stability check, writes one report file, and emits one matchable summary
 line. It is mechanical only — no auto-escalate, no auto-key — exactly the
@@ -572,7 +577,10 @@ ssh -n -o BatchMode=yes <host> "tmux capture-pane -p -J -t <session> -S -30"
 
 The host and tmux session come from the roster
 entry (`{"agent_id","hostname","tmux_session"}`, see `resources/watch-params-schema.md`) or from
-`thrum team @<agent> --offline --json`. It is a strict fallback, never primary and never SSH-first. It needs
+`thrum team @<agent> --offline --json`. A qualified `agent_id` (`name@daemon`) in a roster entry is kept as given
+and names exactly that agent; a bare name means this daemon's agent first, else the single remote one, and a name
+several other daemons share is reported as ambiguous and skipped. It is a strict fallback, never primary and never
+SSH-first. It needs
 non-interactive SSH access (key-based) from your machine to the target machine, and `tmux` and `python3` where the
 script runs.
 

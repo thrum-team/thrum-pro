@@ -69,8 +69,8 @@ optimization.
 ## Subagent model selection
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and effort per the
-> `choosing-subagent-models` skill (read `runtime.role_models` at the moment of use). Never let a sub-agent inherit your
-> own model.
+> `choosing-subagent-models` skill (run `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 ## Check the target's queue before you dispatch (R3)
 
@@ -227,7 +227,7 @@ a monotonic budget across diffs.
 existing anti-pattern (not just fixing one instance of it), the acceptance
 criteria MUST include a mechanical ratchet lens (see
 `coordinator-hotpath-merge-gate` § "Invariant-ratchet lenses") wired into
-`.thrum/hotpath-gate.json` as `always_run` before the epic is considered
+`.thrum/policy/hotpath-gate.json` as `always_run` before the epic is considered
 closeable — not as a follow-up. A judgment-only acceptance ("reviewer
 confirms the count went down") is insufficient; the count must be enforced
 by a standing mechanical budget the gate itself checks on every subsequent
@@ -280,8 +280,9 @@ inherit too. Cost compounds across a session.
 
 **How to apply:** Every dispatch prompt should include the model-selection rule
 explicitly: "When you spawn your own sub-agents, pass explicit `model:` —
-choose model and effort per the `choosing-subagent-models` skill (read
-`runtime.role_models` at the moment of use); never inherit your own model." Audit the dispatch prompt before sending.
+choose model and effort per the `choosing-subagent-models` skill (run
+`thrum config list-role-models` for the agent's runtime and role); never inherit your own model." Audit the dispatch
+prompt before sending.
 
 ## The impl-prompt review stamp satisfies pre-dispatch review
 

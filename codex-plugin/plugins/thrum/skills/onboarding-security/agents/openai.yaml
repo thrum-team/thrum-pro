@@ -1,0 +1,4 @@
+interface:
+  display_name: "Onboarding Security"
+  short_description: "Use when a repository needs a written security model that tells Thrum's agents what to protect and what to ignore - first-time setup, a security scan that reports findings the owner already ruled out, or a role that designs a guard, cap or authorization without a stated boundary. Writes .thrum/policy/security-model.md and the role pointers. Recommended first step of project onboarding, and it runs on its own."
+  default_prompt: "Use when a repository needs a written security model that tells Thrum's agents what to protect and what to ignore - first-time setup, a security scan that reports findings the owner already ruled out, or a role that designs a guard, cap or authorization without a stated boundary. Writes .thrum/policy/security-model.md and the role pointers. Recommended first step of project onboarding, and it runs on its own."

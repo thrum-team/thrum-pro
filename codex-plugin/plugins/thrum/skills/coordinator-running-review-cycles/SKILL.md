@@ -22,8 +22,9 @@ reviewers as parallel sub-agents in the same message. Pass each a clear scope
 ("review the diff at <BASE>...<HEAD> for <criteria>").
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and
-> effort per the `choosing-subagent-models` skill (read `runtime.role_models` at
-> the moment of use). Never let a sub-agent inherit your own model.
+> effort per the `choosing-subagent-models` skill (run
+> `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 ### Wait for both reviewers before sending anything to the implementer
 
@@ -123,15 +124,15 @@ green-test check can be re-run when it clears.
 
 **Why:** Dual review (code-quality + spec-compliance) is general-purpose and
 does not carry the project-specific structural lenses that
-`.thrum/philosophy.md` requires — folding them in as dual-review findings would
-dilute both the general review and the specialized gate.
+`.thrum/policy/philosophy.md` requires — folding them in as dual-review findings
+would dilute both the general review and the specialized gate.
 
 **How to apply:** After dual review passes clean, before running `git merge`,
 invoke `coordinator-philosophy-merge-gate` for any branch that introduces or
 materially changes a service, handler, background job, adapter, or RPC boundary.
 Skip it for small/mechanical fixes. The gate walks all anti-patterns and red
-flags in `.thrum/philosophy.md`, with single-responsibility (SRP) as one lens
-(Lens 10) among the full set — not a separate pass.
+flags in `.thrum/policy/philosophy.md`, with single-responsibility (SRP) as one
+lens (Lens 10) among the full set — not a separate pass.
 
 ### Prose-pre vs code-post: what this review cycle covers
 

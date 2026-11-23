@@ -1,13 +1,12 @@
 ---
 name: message-listener
 description: >
-  Background listener for incoming Thrum messages. Runs on a cheap tier
-  (see choosing-subagent-models) for cost efficiency. Uses `thrum wait` with PID file coordination to prevent
+  Background listener for incoming Thrum messages, only when not in tmux (tmux agents get messages in the pane; never start one). Dispatch it with the model
+  the prime or spawn template rendered, or the stored message-listener row of
+  `thrum config list-role-models --role message-listener` if one exists. Uses `thrum wait` with PID file coordination to prevent
   duplicates. Returns immediately when new messages arrive.
-model: sonnet
 background: true
 maxTurns: 65
-effort: low
 tools:
   - Bash
 ---

@@ -174,8 +174,8 @@ worktree, and blocks two things thrum commands need:
 3. **Filesystem read to the redirect-resolved `.thrum` directory itself**
    (allowlist). A codex agent's own sandboxed Read-tool calls need this to
    load ordinary thrum monitor/support material (`.thrum/role_templates`,
-   `.thrum/hotpath-gate.json`, `.thrum/philosophy.md`, `.thrum/config.json`,
-   etc.) — in a worktree with a redirect, this directory lives outside the
+   `.thrum/config.json`, etc.; the committed `.thrum/policy/` files live in
+   the checkout and need no grant) — in a worktree with a redirect, this directory lives outside the
    current worktree/workspace root, the same way the audit-log dir and
    daemon socket do, so it isn't covered by `extends = ":workspace"` either.
    `.codex/skills` needs no equivalent grant: it is never redirected, so it
@@ -231,8 +231,8 @@ the first tool call. Accept it once, before starting Codex:
 - in a terminal, run a normal command such as `thrum whoami`, read the prompt
   and type `yes`; or
 - without a terminal, run a normal command with the variable set to the bundled
-  EULA version, for example `THRUM_ACCEPT_EULA=0.9.11 thrum whoami` (the version
-  is currently `0.9.11`; the prompt and the refusal message name the version
+  EULA version, for example `THRUM_ACCEPT_EULA=0.9.14 thrum whoami` (the version
+  is currently `0.9.14`; the prompt and the refusal message name the version
   they want). Starting Codex with `THRUM_ACCEPT_EULA` set to that version also
   records it, because the first hook runs `thrum` with it.
 

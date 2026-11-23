@@ -27,7 +27,7 @@ REPO=$(
   thrum agent worktree --authoritative 2>/dev/null
 ) || { echo "ERROR: cannot authoritatively resolve your worktree via the daemon. Refusing to fall back to cwd/git-toplevel — that would risk silently saving this snapshot to the wrong repo. Check daemon connectivity and retry."; exit 1; }
 [ -n "$REPO" ] || { echo "ERROR: thrum agent worktree --authoritative returned empty"; exit 1; }
-AGENT=$(thrum whoami --field agent_id) || { echo "ERROR: agent not registered"; exit 1; }
+AGENT=$(set -o pipefail; thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")') || { echo "ERROR: agent not registered"; exit 1; }
 [ -n "$AGENT" ] || { echo "ERROR: empty agent_id"; exit 1; }
 mkdir -p "${REPO}/.thrum/restart"
 ```
@@ -106,6 +106,17 @@ now. Trust your in-context state.
 Write for a competent stranger in your role — someone who has the runtime
 briefing (`thrum prime`, role preamble, project state) but none of this
 session's conversation context. Refer to the previous session in third person.
+
+**Restart and sleep snapshots: the FIRST line MUST be an `ON RESUME` header**,
+above §1:
+
+> 🔴 ON RESUME — you were RESTARTED, not compacted (or: you WOKE from sleep).
+> Read this snapshot FIRST. If the briefing is injected, use it and do not prime
+> a second time (a second prime cannot redeliver this snapshot). If none
+> appeared (the hook did not inject), read `.thrum/restart/<your-id>.md` FIRST
+> (no prime has archived it yet), else the NEWEST
+> `.thrum/agents/<your-id>/sessions/*-restart.md` in the MAIN repo (Read tool),
+> then run `thrum:prime-agent` once. Then continue from §16.
 
 #### Structure (16 sections)
 

@@ -1,6 +1,6 @@
 ---
 name: using-the-dashboard
-description: "Use when you want to present an interactive board to the human user (status, options, NEEDs with A/B/C picks), or when you see a dashboard mention and wonder what is actually usable today. Carries the CLI surface, the write/read discipline, and the live-vs-coming honesty table."
+description: "Use when you want to present an interactive board to the human user (status, options, NEEDs with A/B/C picks), or when you see a dashboard mention and are unsure what is actually usable today. Carries the CLI surface, the write/read discipline, and the live-vs-coming honesty table."
 ---
 
 # Using the Agent Dashboard
@@ -52,8 +52,13 @@ Semantics that matter to you as an author:
 
 - **Append-only + rev'd.** Every change appends a new snapshot; `rev` increments.
   Your `update` keeps a widget's position; `delete` removes it; `clear` wipes
-  the board. Cleared/deleted content is **GONE** — the board is ephemeral, and
-  the DURABLE record of any decision is the answer MESSAGES, not the board.
+  the board. `delete` and `clear` preview first (no change is made); repeat with
+  `--force` within 10 minutes to apply. The preview is stored separately from
+  the dry-run listing of bare `thrum message read --all` (it only lists and
+  marks nothing; `thrum message read --all --apply` marks). Same 10-minute
+  window; neither affects the other. Cleared/deleted content is **GONE** — the
+  board is ephemeral, and the DURABLE record of any decision is the answer MESSAGES,
+  not the board.
 - **Widget cardinality (enforced):** action-pick ≤8, html ≤4, section ≤8,
   card ≤24, stat-row ≤12, list ≤4, total ≤64. Lists have NO row cap.
 - **Answer path:** when the user answers an action-pick, you get a **nudge**
@@ -98,8 +103,8 @@ thrum dashboard results --unanswered # only questions with no answer yet
 
 # Mutate
 thrum dashboard update <widget-id> --doc-file /tmp/new-widget.json   # in place, keeps position
-thrum dashboard delete <widget-id>
-thrum dashboard clear                # wipe the whole board (content is GONE)
+thrum dashboard delete <widget-id>   # preview only; add --force within 10 min to remove
+thrum dashboard clear                # preview only; add --force within 10 min to wipe (content is GONE)
 ```
 
 **Validation loop:** `set`/`update` either print `posted OK (rev N)` or fail

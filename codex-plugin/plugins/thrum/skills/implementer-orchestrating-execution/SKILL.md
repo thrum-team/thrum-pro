@@ -33,8 +33,9 @@ The size bound (~15 lines / 2 files) is the project default; a project-local
 ### Subagent model selection
 
 > **Model tiers:** pass an explicit `model:` on every dispatch; choose model and
-> effort per the `choosing-subagent-models` skill (read `runtime.role_models` at
-> the moment of use). Never let a sub-agent inherit your own model.
+> effort per the `choosing-subagent-models` skill (run
+> `thrum config list-role-models` for the agent's runtime and role). Never let a
+> sub-agent inherit your own model.
 
 ### Step 1 — Dispatch research
 
@@ -48,10 +49,9 @@ you do not read the code into your own context. Label the dispatch
 From the report, decide exactly what changes where, then dispatch
 general-purpose sub-agent(s) to make the edits. Give each the bd task ID, the
 exact files, the acceptance criteria, and the relevant slice of the report.
-Model: per `choosing-subagent-models`; use the cheapest tier for purely
-mechanical edits (find/replace, rename). Label
-`description="implement: <what>"`. Parallelize independent edit-targets;
-serialize edits to shared files.
+Model: the implementer role's row from `thrum config list-role-models` (per
+`choosing-subagent-models`). Label `description="implement: <what>"`.
+Parallelize independent edit-targets; serialize edits to shared files.
 
 ### Step 3 — Dispatch verification
 
@@ -92,13 +92,13 @@ hard size bound.
 
 ### Model tiers (always pass `model:` explicitly)
 
-| Dispatch           | Model                                                                     |
-| ------------------ | ------------------------------------------------------------------------- |
-| research / explore | per `choosing-subagent-models` (or the `Explore` agent type)              |
-| implementation     | per `choosing-subagent-models`; cheapest tier for purely mechanical edits |
-| verification       | per `choosing-subagent-models`                                            |
+| Dispatch           | Model                                                           |
+| ------------------ | --------------------------------------------------------------- |
+| research / explore | per `choosing-subagent-models` (or the `Explore` agent type)    |
+| implementation     | the implementer role's row from `thrum config list-role-models` |
+| verification       | per `choosing-subagent-models`                                  |
 
-Use the bare alias from `runtime.role_models`; do not hard-pin a version id.
+Use the model and effort `thrum config list-role-models` returns, as returned.
 Never let a sub-agent inherit the parent model.
 
 ### Sub-agent label convention (required)

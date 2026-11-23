@@ -35,7 +35,8 @@ set back so the NEXT wake compares against THIS wake.**
 
 ```bash
 ls .claude/skills/ > /tmp/current_skills.txt
-AGENT_NAME=$(thrum whoami --field agent_id)
+AGENT_NAME=$(thrum whoami --json | jq -r '(.name // "" | select(. != "")) // ((.agent_id // "") | split("@")[0] // "") | select(. != "")')
+[ -n "$AGENT_NAME" ] || { echo "ERROR: agent not registered"; exit 1; }
 LAST_SEEN=".thrum/agents/${AGENT_NAME}/last_seen_skills.txt"
 if [ -f "${LAST_SEEN}" ]; then
   diff "${LAST_SEEN}" /tmp/current_skills.txt || true

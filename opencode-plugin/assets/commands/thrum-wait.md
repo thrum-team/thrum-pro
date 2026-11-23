@@ -1,6 +1,6 @@
 ---
 name: thrum-wait
-description: Block until a message arrives
+description: Block until a message arrives, only when not in tmux (tmux agents get messages in the pane)
 ---
 
 Block until a message arrives or timeout expires. Used by the message-listener
