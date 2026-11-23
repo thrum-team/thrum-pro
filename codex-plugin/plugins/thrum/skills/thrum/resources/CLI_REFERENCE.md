@@ -450,7 +450,7 @@ thrum ping @name                               # Process liveness via owning dae
 thrum ping planner                             # @ prefix optional; also printed by `thrum agent status`
 # Verdicts: alive (exit 0); dead, pid-recycled, no-registration, unverified (exit 1); owning-daemon-unreachable (exit 2)
 # Only alive is evidence the process runs; unverified and owning-daemon-unreachable are unknown (neither alive nor dead)
-# Name resolves like thrum send (agent id, prefix:id, unique bare peer name; ambiguous is an error naming the candidates); no display name or role match; a peer-owned agent's verdict comes from its owning daemon
+# Use a local name or a qualified agent address (name@handle or name@daemon-id). A peer-owned agent's verdict comes from its owning daemon.
 thrum overview                                 # Combined: identity + team + inbox + sync
 thrum overview --json
 ```

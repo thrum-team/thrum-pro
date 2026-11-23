@@ -236,7 +236,7 @@ cleanup_created() {
   if [ -n "${MADE_SESSION}" ]; then
     "${THRUM}" tmux kill "${NAME}" >/dev/null 2>&1 ||
       printf 'start-watcher: could not kill tmux session %s; it is still there\n' "${NAME}" >&2
-    "${THRUM}" agent delete "${NAME}" >/dev/null 2>&1 ||
+    "${THRUM}" agent delete "${NAME}" --yes >/dev/null 2>&1 ||
       printf 'start-watcher: could not delete agent %s; it is still registered\n' "${NAME}" >&2
   fi
   if [ -n "${MADE_AGENT_DIR}" ]; then
@@ -276,9 +276,9 @@ fi
 
 RT_ARGS=()
 [ -z "${RUNTIME}" ] || RT_ARGS=(--runtime "${RUNTIME}")
-MADE_SESSION=1
 "${THRUM}" tmux create "${NAME}" --name "${NAME}" --role "${ROLE}" --module "${ROLE}" --cwd "${WT_PATH}" --model "${MODEL}" --effort "${EFFORT}" ${RT_ARGS[@]+"${RT_ARGS[@]}"} ||
   fail "tmux create failed"
+MADE_SESSION=1
 "${THRUM}" tmux launch "${NAME}" --model "${MODEL}" --effort "${EFFORT}" ${RT_ARGS[@]+"${RT_ARGS[@]}"} ||
   fail "tmux launch failed; the agent did not start"
 

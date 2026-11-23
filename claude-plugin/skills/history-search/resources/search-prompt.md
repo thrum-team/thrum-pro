@@ -61,9 +61,9 @@ search comes back empty and the agent may live elsewhere, find its box and coord
 
 In the `team.members` list each member has `agent_id`, `hostname`, `role` and `is_local`, and may have `name`.
 Match the agent in this order: a full ID (`name@daemon`) matches only the member whose `agent_id` equals it; a
-bare name means the agent on this daemon first (a member with `is_local` true or an `agent_id` without `@`,
-matched on `name`, or on `agent_id` up to any `@` when `name` is absent), else the single member of that name on
-another daemon; if several other daemons have that name, say it is ambiguous and list their `agent_id`s. When you
+bare name matches nonempty `name`, using the ID before `@` as the fallback. Prefer the local match, then the
+single remote match. Use a boolean `is_local` as authoritative. When absent, infer locality from a bare ID or a
+suffix matching your own daemon ID. For multiple remote matches, report ambiguity and list their `agent_id`s. When you
 name a member to address, use its `agent_id`. Find the agent's `hostname`; the coordinators of that box are the
 members with the same `hostname` and `role` of `coordinator`.
 Begin your ANSWER with

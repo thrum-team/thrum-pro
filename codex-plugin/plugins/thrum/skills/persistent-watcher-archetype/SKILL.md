@@ -506,13 +506,13 @@ Load the `using-monitors` skill before you arm, edit or stop this monitor.
 **A ready-to-use script ships with this skill** —
 `resources/thrum-watch-pane-capture.sh` (paired with
 `resources/thrum-capture-fallback.sh`). It is generic and roster-driven: it
-reads your own `watch_params.json`, captures each roster member's pane (local
-`thrum tmux capture` first, always — that already reaches remote agents by name
-via the normal rpcrouter proxy; see "SSH fallback" below for what the second
-script is for), runs `thrum detect --category permission`, applies the
-two-capture stability check, writes one report file, and emits one matchable
-summary line. It is mechanical only — no auto-escalate, no auto-key — exactly
-the scope this section already describes; judgment stays in your own turn.
+reads your own `watch_params.json`, captures each roster member's pane
+(`thrum tmux capture` first, using a qualified agent address for remote roster
+members; see "SSH fallback" below for what the second script is for), runs
+`thrum detect --category permission`, applies the two-capture stability check,
+writes one report file, and emits one matchable summary line. It is mechanical
+only — no auto-escalate, no auto-key — exactly the scope this section already
+describes; judgment stays in your own turn.
 
 **Setup (one-time per watcher instance):** the script cannot locate itself
 inside the plugin tree at run time — `thrum monitor`'s scheduled-process

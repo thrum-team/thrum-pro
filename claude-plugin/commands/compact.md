@@ -238,6 +238,11 @@ if [ "$SNAPSHOT_OK" = 1 ] && [ "$SESSION_OK" = 1 ]; then
   fi
   PREAMBLE="${REPO}/.thrum/context/${AGENT}_preamble.md"
   RESUME_PROMPT="Compaction complete. Do these two steps in order. STEP 1 - Read your role preamble with the Read tool, IN FULL: ${PREAMBLE}. Read every section to the last line. Do not skip, skim or stop at the first screen, and do not go to step 2 until you have read all of it. It holds your role's instructions, including how messages reach you (in tmux, messages arrive in your pane; never start a message listener). STEP 2 - Only after step 1, follow the Resume Plan in the auto-injected briefing (# Previous Session Context). If it is missing, read ${SNAPSHOT} or the newest *-restart.md in .thrum/agents/${AGENT}/sessions/ of the main repo, then execute its numbered resume plan."
+  PREAMBLE_NOTICE='Your role preamble was loaded into your system prompt at launch; do not read it again unless it was re-rendered since.'
+  (set -o pipefail; perl -MPOSIX=setpgid -e '$p=fork // exit 1; $p or do { defined setpgid(0,0) or exit 1; exec @ARGV or exit 1 }; $SIG{ALRM}=sub { kill "KILL", -$p, $p }; alarm 1; waitpid($p,0) == $p or exit 1; exit($? != 0)' thrum agent preamble-in-prompt "$AGENT" </dev/null 2>/dev/null | cmp -s - <(printf '%s\n' "$PREAMBLE_NOTICE")) || PREAMBLE_NOTICE=""
+  if [ -n "$PREAMBLE_NOTICE" ]; then
+    RESUME_PROMPT="Compaction complete. $PREAMBLE_NOTICE Follow the Resume Plan in the auto-injected briefing (# Previous Session Context). If it is missing, read ${SNAPSHOT} or the newest *-restart.md in .thrum/agents/${AGENT}/sessions/ of the main repo, then execute its numbered resume plan."
+  fi
   if [ "$SEND_RC" -ne 0 ]; then
     echo "ERROR: thrum tmux send exited ${SEND_RC} — the daemon-routed self-send failed; it will NOT queue or deliver /compact."
     # Fail-loud fallback, NOT silent idle: attempt the compact command

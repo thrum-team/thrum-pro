@@ -1,0 +1,334 @@
+{
+  "schema_version": 1,
+  "plugin_version": "0.11.0-dev.1.526",
+  "catalog_revision": 1,
+  "generated_at": "2026-11-22T00:00:00Z",
+  "alias_version": 1,
+  "runtimes": {
+    "claude": {
+      "date": "2026-11-20",
+      "models": {
+        "claude-opus-5-5": {
+          "canonical_id": "claude-opus-5-5",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "claude-sonnet-5-5": {
+          "canonical_id": "claude-sonnet-5-5",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "claude-haiku-5-5": {
+          "canonical_id": "claude-haiku-5-5",
+          "effort_policy": "unconstrained"
+        }
+      }
+    },
+    "codex": {
+      "date": "2026-11-18",
+      "models": {
+        "gpt-6.2-sol": {
+          "canonical_id": "gpt-6.2-sol",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-6.2-astra": {
+          "canonical_id": "gpt-6.2-astra",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-6.1-terra": {
+          "canonical_id": "gpt-6.1-terra",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-6.1-sol": {
+          "canonical_id": "gpt-6.1-sol",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-6-astra": {
+          "canonical_id": "gpt-6-astra",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-6-sol": {
+          "canonical_id": "gpt-6-sol",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-6-luna": {
+          "canonical_id": "gpt-6-luna",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "gpt-5.6-sol": {
+          "canonical_id": "gpt-5.6-sol",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-5.6-terra": {
+          "canonical_id": "gpt-5.6-terra",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ]
+        },
+        "gpt-5.6-luna": {
+          "canonical_id": "gpt-5.6-luna",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        }
+      }
+    },
+    "copilot": {
+      "date": "2026-11-18",
+      "models": {
+        "gpt-6.2-sol": {
+          "canonical_id": "gpt-6.2-sol",
+          "effort_policy": "unconstrained"
+        },
+        "gpt-5.6-luna": {
+          "canonical_id": "gpt-5.6-luna",
+          "effort_policy": "unconstrained"
+        }
+      }
+    },
+    "cursor": {
+      "date": "2026-11-18",
+      "models": {
+        "claude-opus-5-5-low": {
+          "canonical_id": "claude-opus-5-5-low",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-low-fast": {
+          "canonical_id": "claude-opus-5-5-low-fast",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-medium": {
+          "canonical_id": "claude-opus-5-5-medium",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-medium-fast": {
+          "canonical_id": "claude-opus-5-5-medium-fast",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-high": {
+          "canonical_id": "claude-opus-5-5-high",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-high-fast": {
+          "canonical_id": "claude-opus-5-5-high-fast",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-xhigh": {
+          "canonical_id": "claude-opus-5-5-xhigh",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-xhigh-fast": {
+          "canonical_id": "claude-opus-5-5-xhigh-fast",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-max": {
+          "canonical_id": "claude-opus-5-5-max",
+          "effort_policy": "unsupported"
+        },
+        "claude-opus-5-5-max-fast": {
+          "canonical_id": "claude-opus-5-5-max-fast",
+          "effort_policy": "unsupported"
+        },
+        "claude-sonnet-5-5-low": {
+          "canonical_id": "claude-sonnet-5-5-low",
+          "effort_policy": "unsupported"
+        },
+        "claude-sonnet-5-5-medium": {
+          "canonical_id": "claude-sonnet-5-5-medium",
+          "effort_policy": "unsupported"
+        },
+        "claude-sonnet-5-5-high": {
+          "canonical_id": "claude-sonnet-5-5-high",
+          "effort_policy": "unsupported"
+        },
+        "claude-sonnet-5-5-xhigh": {
+          "canonical_id": "claude-sonnet-5-5-xhigh",
+          "effort_policy": "unsupported"
+        },
+        "claude-sonnet-5-5-max": {
+          "canonical_id": "claude-sonnet-5-5-max",
+          "effort_policy": "unsupported"
+        },
+        "auto": {
+          "canonical_id": "auto",
+          "effort_policy": "unconstrained"
+        }
+      }
+    },
+    "muse": {
+      "date": "2026-11-20",
+      "models": {
+        "muse-ember-1.0": {
+          "canonical_id": "muse-ember-1.0",
+          "effort_policy": "fixed",
+          "efforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "muse-wonder-1.0": {
+          "canonical_id": "muse-wonder-1.0",
+          "effort_policy": "fixed",
+          "efforts": [
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "muse-wonder-full-1.0": {
+          "canonical_id": "muse-wonder-full-1.0",
+          "effort_policy": "unconstrained"
+        },
+        "muse-spark-1.2": {
+          "canonical_id": "muse-spark-1.2",
+          "effort_policy": "unconstrained"
+        },
+        "muse-spark-1.3": {
+          "canonical_id": "muse-spark-1.3",
+          "effort_policy": "unconstrained"
+        }
+      }
+    },
+    "opencode": {
+      "date": "2026-11-18",
+      "models": {
+        "zai-coding-plan/glm-5.3-flash": {
+          "canonical_id": "zai-coding-plan/glm-5.3-flash",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "high",
+            "max"
+          ]
+        },
+        "zai-coding-plan/glm-5.3": {
+          "canonical_id": "zai-coding-plan/glm-5.3",
+          "effort_policy": "unconstrained"
+        },
+        "zai-coding-plan/glm-5.3-highspeed": {
+          "canonical_id": "zai-coding-plan/glm-5.3-highspeed",
+          "effort_policy": "unconstrained"
+        }
+      }
+    },
+    "antigravity": {
+      "date": "2026-11-18",
+      "models": {
+        "gemini-3.8-flash": {
+          "canonical_id": "gemini-3.8-flash",
+          "effort_policy": "fixed",
+          "efforts": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "gemini-3.8-flash-low": {
+          "canonical_id": "gemini-3.8-flash-low",
+          "effort_policy": "unsupported"
+        },
+        "gemini-3.8-flash-medium": {
+          "canonical_id": "gemini-3.8-flash-medium",
+          "effort_policy": "unsupported"
+        },
+        "gemini-3.8-flash-high": {
+          "canonical_id": "gemini-3.8-flash-high",
+          "effort_policy": "unsupported"
+        }
+      }
+    }
+  }
+}

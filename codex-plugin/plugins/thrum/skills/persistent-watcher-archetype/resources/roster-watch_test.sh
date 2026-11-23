@@ -375,6 +375,14 @@ assert_eq "declared roster: a bare roster alice is excused by a declared alice@<
 # declared alice@d1, but the roster's alice is this daemon's own agent: not excused (another daemon's agent)
 decl alice@d1
 assert_eq "declared roster: a bare roster alice that resolves to this daemon's alice is NOT excused by alice@d1" "no" "$(cand alice)"
+D_TEAM='{"team":{"members":[{"agent_id":"alias@dL","name":"alice","is_local":true},{"agent_id":"alias@d1","name":"alice","is_local":false}]}}'
+decl alias@dL
+assert_eq "declared roster: a qualified ID excuses its roster name" "yes" "$(cand alice)"
+decl alias@d1
+assert_eq "declared roster: control: a remote ID with the same name does not excuse the local member" "no" "$(cand alice)"
+decl alice
+assert_eq "declared roster: a bare declaration excuses the matching qualified roster ID" "yes" "$(cand alias@dL)"
+assert_eq "declared roster: the local name does not excuse a remote qualified roster ID" "no" "$(cand alias@d1)"
 # only one alice anywhere, on another daemon: the bare roster entry is that agent, so the declaration excuses it
 D_TEAM='{"team":{"members":[{"agent_id":"alice@d1","name":"alice","is_local":false}]}}'
 set_own dX

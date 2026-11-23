@@ -15,33 +15,30 @@ or any other content from that skill. Layer this content on top of those
 universals: the rules below capture project-specific Go conventions and
 quality-gate practice.
 
-### Run the race or concurrency check your project configures
+### Run the norace lane; race lanes belong to the gates
 
-**Why:** Code with significant concurrent state (goroutines, threads, async
-tasks) can pass a plain test run and still fail under the language's race or
-concurrency checker, sometimes with silent data corruption that takes hours to
-track down later.
+**Why:** Race and concurrency checkers are slow and run in the gates after you
+report the work finished (per-landing gate, daily full gate, release). Running
+them during implementation or per commit duplicates the gate's work.
 
-**How to apply:** Read `.thrum/policy/gates.json` (the `per_landing` entries of
-kind `race`, or the commands your project documents) and run the race or
-concurrency check it names on the packages you touched. Never report tests
-passing without having run it, when your project has one. If your project has
-none, say so in your report. (Go example:
-`go test -race ./internal/<pkg>/... -count=1`.)
+**How to apply:** Run tests on the project's non-race lane for the packages you
+touched (the command the repo's AGENTS.md names; Go example:
+`go test ./internal/<pkg>`, no `-race`). Never run a race lane during
+implementation. Do not report race results; the gate reports them. If your
+change adds concurrent state, say so in your report so the gate runs the race
+lane on it.
 
 ### Scope test runs to packages you touched
 
 **Why:** Running the entire test tree on every iteration of a fix-test loop is
 wasteful — most packages weren't touched and their tests will pass identically
 every iteration. Scoping speeds the inner loop without sacrificing correctness;
-the full tree gets one final run before reporting done.
+the gate runs the full tree.
 
 **How to apply:** During the inner fix-test loop, run only the affected packages
-with a test selector (Go example:
-`go test -race ./internal/<pkg>/... -run <TestName>`). Once the scoped tests
-pass and you're ready to report done, run the whole-lane test command from
-`.thrum/policy/gates.json` (`per_landing`, or `full_fallback` when selection
-cannot run) once to confirm nothing else broke.
+with a test selector (Go example: `go test ./internal/<pkg> -run <TestName>`).
+Once the scoped tests pass and you're ready to report done, run the non-race
+lane on every package you touched once to confirm nothing else broke.
 
 ### Use `t.TempDir()` for filesystem fixtures — never hardcoded paths
 
@@ -65,9 +62,8 @@ bugs that compile but are wrong: unreachable code, suspicious conversions,
 malformed format arguments. Code that fails the checks gets caught in CI or by
 review; running them locally catches it pre-commit when the fix is one line.
 
-**How to apply:** Before reporting done, run the lint and static-check commands
-from `.thrum/policy/gates.json` (`per_landing` kinds `lint`, plus
-`structural_checks`), or the commands your project documents. All should pass
+**How to apply:** Before reporting done, run the project's read-only lint and
+static-check commands (Go: `make lint-all` and `go vet ./...`). All should pass
 clean. Run a check in its read-only form, never a fix mode that rewrites tracked
 files (the `write_capable_targets` there). If a finding looks like a false
 positive, prefer a small annotation or refactor to silencing the warning. (Go

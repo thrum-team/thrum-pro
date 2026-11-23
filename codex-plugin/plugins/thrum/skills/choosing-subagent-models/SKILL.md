@@ -285,10 +285,9 @@ health RPC reporting green off a path that cannot fail; `make ci` swallowing a
 critical CVE with a warning).
 
 **So: after launching an agent, verify with
-`thrum tmux capture --format=annotated` (or `--format=json` for scripting).** It
-parses the footer server-side into NBSP-free fields — no positional-window
-guessing, no NBSP grep trap, and the header states `ok`/`FAILED` explicitly
-instead of leaving you to infer a failure from empty stdout:
+`thrum tmux capture --format=annotated` (or `--format=json` for scripting).**
+Capture reads the model from the footer and gets transcript-runtime context from
+contextpoll. The header reports `ok` or `FAILED`.
 
 ```bash
 thrum tmux capture <agent-name> --format=annotated --lines 12
@@ -388,6 +387,13 @@ activity.
 
 --- WORKTREE TEARDOWN & SALVAGE ---
 
+- Retire an implementer and remove its worktree yourself only when its epic or
+  plan has no further task for it; do not defer that to a later coordinator
+  audit. Between tasks of the same epic or plan, keep the implementer running
+  and give it the next task; remove only the worktree of a branch that has
+  landed. Keep the planned number of implementers filled: replace a seat that
+  stalls or retires. Scope: implementers only; brainstormer and researcher
+  worktrees are kept.
 - Before any teardown, enumerate with both flags:
   `git -C <wt> status --porcelain --untracked-files=all --ignored -- .thrum`.
 - Salvage anything found to a durable path (not /tmp), one subdirectory per

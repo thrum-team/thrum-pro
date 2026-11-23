@@ -207,6 +207,8 @@ fi
 # these paths itself.
 BRIEFING_SPLIT_MARKER='<!-- thrum:briefing-split -->'
 BRIEFING_INLINE_MAX=9000
+PREAMBLE_NOTICE='Your role preamble was loaded into your system prompt at launch; do not read it again unless it was re-rendered since.'
+(set -o pipefail; perl -MPOSIX=setpgid -e '$p=fork // exit 1; $p or do { defined setpgid(0,0) or exit 1; exec @ARGV or exit 1 }; $SIG{ALRM}=sub { kill "KILL", -$p, $p }; alarm 1; waitpid($p,0) == $p or exit 1; exit($? != 0)' thrum agent preamble-in-prompt "$AGENT_ID" </dev/null 2>/dev/null | cmp -s - <(printf '%s\n' "$PREAMBLE_NOTICE")) || PREAMBLE_NOTICE=""
 SPLIT_FIRST_LINE=""
 if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFING_INLINE_MAX" ]; then
   _split_wrapped=$'\n'"$PRIME_OUTPUT"$'\n'
@@ -230,7 +232,10 @@ if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFIN
       if [ "$_split_ok" -eq 1 ]; then
         _split_inline=${_split_wrapped%%"$_split_marker_line"*}
         PRIME_OUTPUT=${_split_inline#$'\n'}
-        if [ -n "$_split_project" ]; then
+        if [ -n "$PREAMBLE_NOTICE" ]; then
+          SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below.${_split_project:+ Read the Project State file ${_split_project}.} Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
+          if [ "${HOOK_SOURCE:-}" != compact ]; then SPLIT_FIRST_LINE="$SPLIT_FIRST_LINE $PREAMBLE_NOTICE"; fi
+        elif [ -n "$_split_project" ]; then
           SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below. Your first action is to read your role preamble ${_split_preamble} and the Project State file ${_split_project}. Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
         else
           SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below. Your first action is to read your role preamble ${_split_preamble}. Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
@@ -268,7 +273,7 @@ RESTART_PREAMBLE=""
 if [ -z "$SPLIT_FIRST_LINE" ] && grep -q '^# Previous Session Context' <<<"$PRIME_OUTPUT"; then  # here-string: a pipe + grep -q SIGPIPEs printf under pipefail on big output
   append_to RESTART_PREAMBLE '# 🛑 ACTION REQUIRED — you left yourself a Resume Plan'$'\n'
   append_to RESTART_PREAMBLE $'\n'
-  append_to RESTART_PREAMBLE 'Before anything else, if the briefing was truncated or persisted to a file, FIRST read the whole file (if there is no file, run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime` once and read its output fully) ONCE and read that file; never repeat the prime command) from its first page through EOF in bounded sequential 200-line chunks (for example, `sed -n '\''1,200p'\'' "$FILE"`, then `sed -n '\''201,400p'\'' "$FILE"`, continuing without gaps), and name one fact from the middle. Only AFTER that full read, locate the **`## Resume Plan`** (or final next-actions section) in **`# Previous Session Context`**, read it in full, and execute its numbered steps in order.'
+  append_to RESTART_PREAMBLE 'Before anything else, if the briefing was truncated or persisted to a file, FIRST read the whole file (do not repeat the prime command: a second prime cannot redeliver your restart snapshot) from its first page through EOF in bounded sequential 200-line chunks (for example, `sed -n '\''1,200p'\'' "$FILE"`, then `sed -n '\''201,400p'\'' "$FILE"`, continuing without gaps), and name one fact from the middle. Only AFTER that full read, locate the **`## Resume Plan`** (or final next-actions section) in **`# Previous Session Context`**, read it in full, and execute its numbered steps in order.'
   if [ "$LIGHT_MODE" -eq 1 ]; then
     append_to RESTART_PREAMBLE " In light mode your snapshot is also at \`${SNAPSHOT_SHOWN:-.thrum/restart/${AGENT_ID}.md}\` (archived under \`.thrum/agents/${AGENT_ID}/sessions/\` once a prime has run); if the section is truncated or missing, finish reading the whole snapshot in sequential pages through EOF before locating the Resume Plan."
   fi
@@ -288,7 +293,7 @@ build_directive() {
     if [ "$LIGHT_MODE" -eq 1 ]; then
       append_to DIRECTIVE "> **Read your snapshot at \`${SNAPSHOT_SHOWN:-.thrum/restart/${AGENT_ID}.md}\` now (file-reading tool, every page in order) to load the rest of your briefing** — the hook output below was cut."$'\n'
     else
-      append_to DIRECTIVE '> **Save the rest of your briefing ONCE with `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime` once and read its output fully), then read that file page by page** (do not re-run `thrum prime`) — the hook output below was cut.'$'\n'
+      append_to DIRECTIVE '> **Your briefing was delivered once and this hook output was cut: do not prime again (a second prime cannot redeliver your restart snapshot).**'$'\n'
     fi
     append_to DIRECTIVE $'\n'
   else
@@ -317,7 +322,7 @@ build_briefing_head() {
       append_to BRIEFING "This output was truncated to fit the hook cap: read \`${SNAPSHOT_SHOWN:-.thrum/restart/${AGENT_ID}.md}\` for the rest."$'\n'
     fi
   elif [ "$TRUNCATED" -eq 1 ]; then
-    append_to BRIEFING 'A **truncated** `thrum prime` output is included below — this runtime caps SessionStart hook output, so the tail was cut. Run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime` once and read its output fully) ONCE and read that file page by page for the full briefing (do not re-run `thrum prime`; it is NOT already in your context in full).'$'\n'
+    append_to BRIEFING 'A **truncated** copy of your briefing is included below — this runtime caps SessionStart hook output, so the tail was cut. The briefing was delivered once; do not prime again (a second prime cannot redeliver your restart snapshot).'$'\n'
   elif [ -n "$SPLIT_FIRST_LINE" ]; then
     append_to BRIEFING 'The inline part of the `thrum prime` output is included below. Read it in full.'$'\n'
   else
@@ -362,6 +367,7 @@ esac
 COMPACT_REQ_LINE=""
 if [ "$HOOK_SOURCE" = "compact" ] && [ -n "$AGENT_WORKTREE" ]; then
   COMPACT_REQ_LINE="REQUIRED, IN THIS ORDER. (1) Use the Read tool on your role preamble ${AGENT_WORKTREE}/.thrum/context/${AGENT_ID}_preamble.md, in full, every section to the last line; do not skip or skim. (2) Only then follow the Resume Plan below. The size of this briefing is not a reason to skip step 1."
+  if [ -n "$PREAMBLE_NOTICE" ]; then COMPACT_REQ_LINE="$PREAMBLE_NOTICE Follow the Resume Plan below."; fi
 fi
 
 byte_len() { printf '%s' "$1" | wc -c | tr -d '[:space:]'; }
@@ -377,7 +383,7 @@ if [ "$HOOK_CAP" -gt 0 ] && [ "$FULL_LEN" -gt "$HOOK_CAP" ]; then
   if [ "$LIGHT_MODE" -eq 1 ]; then
     TRUNC_NOTICE=$'\n\n[thrum: hook output truncated to fit this runtime'"'"'s '"${HOOK_CAP}"'-byte cap. Read '"${SNAPSHOT_SHOWN:-.thrum/restart/${AGENT_ID}.md}"$' for the rest.]\n'
   else
-    TRUNC_NOTICE=$'\n\n[thrum: hook output truncated to fit this runtime'"'"'s '"${HOOK_CAP}"'-byte cap. Run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime` once and read its output fully) ONCE and read that file for the full briefing.]\n'
+    TRUNC_NOTICE=$'\n\n[thrum: hook output truncated to fit this runtime'"'"'s '"${HOOK_CAP}"'-byte cap. The briefing was delivered once; do not prime again, a second prime cannot redeliver your restart snapshot.]\n'
   fi
   FIXED_LEN=$(( $(byte_len "$BANNER") + $(byte_len "$DIRECTIVE") + $(byte_len "$ACK_INSTRUCTION") + $(byte_len "$RESTART_PREAMBLE") + $(byte_len "$BRIEFING") + $(byte_len "$TRUNC_NOTICE") + $(byte_len "$SPLIT_FIRST_LINE") + $(byte_len "$COMPACT_REQ_LINE") ))
   BUDGET=$(( HOOK_CAP - FIXED_LEN - 16 ))

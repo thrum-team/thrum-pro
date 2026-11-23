@@ -5,10 +5,8 @@
 # same-host dual-daemon caller-identity collision, and a
 # phantom-routing regression on daemon builds predating EnsureProxies).
 #
-# `thrum tmux capture <agent>` ALREADY reaches remote agents by name via the
-# rpcrouter proxy — this script is a resilience FALLBACK for when that path
-# is broken on the CALLER's side, not a replacement for it and not a
-# fleet-wide-watching enabler in its own right. Local-first, always.
+# Try `thrum tmux capture name@handle` first for a remote agent. This script
+# provides the SSH fallback for the caller-side errors above.
 #
 # `key` is the LAST rung of the watcher's modal ladder: use it only after the
 # daemon grant and that machine's coordinator have failed and an agent stays

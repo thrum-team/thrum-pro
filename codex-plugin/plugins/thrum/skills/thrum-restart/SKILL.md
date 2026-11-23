@@ -59,7 +59,8 @@ with the per-section guidance documented in the partial.
 
 ##### Big picture heading — REQUIRED FIRST SECTION (write this BEFORE anything else)
 
-Every restart snapshot MUST begin with a section using this exact heading:
+The `ON RESUME` header line (snapshot-protocol) goes above `## 1. Big picture`.
+Every restart snapshot MUST then begin with a section using this exact heading:
 
 ```text
 ## 1. Big picture — what shipped this session

@@ -161,16 +161,18 @@ operation. For graceful shutdown of in-flight agents, send a thrum message
 asking them to save state, wait for ack, then run the sequence above. Done/idle
 agents on closed epics need no graceful shutdown.
 
-### Expect orchestrators to remove implementer worktrees at completion — do not defer this to a coordinator audit
+### Expect orchestrators to remove implementer worktrees when the epic or plan has no further task for the implementer
 
 **Why:** Implementer worktrees used to accumulate because removal was left for a
 later coordinator sweep that never actually reduced the count — a
 hand-maintained cleanup rots. The fix puts ownership on the agent that actually
-knows the work is finished: the **orchestrator** removes an implementer's
-worktree as soon as that implementer reports DONE and its branch is
-merged/pushed. This is not the coordinator's own destroy sequence above (that
-section is for agents the coordinator manages directly) — it is the standing
-expectation you hold orchestrators to for the implementers **they** launched.
+knows the work is finished: the **orchestrator** retires the implementer and
+removes its landed worktree only when the epic or plan has no further task for
+it. Between tasks, keep the implementer running and assign the next task. Fill
+the planned implementer seats by replacing seats that stall or retire. This is
+not the coordinator's own destroy sequence above (that section is for agents the
+coordinator manages directly) — it is the standing expectation you hold
+orchestrators to for the implementers **they** launched.
 
 **How to apply:**
 
@@ -189,10 +191,9 @@ expectation you hold orchestrators to for the implementers **they** launched.
 - **Don't re-teardown what's already gone.** Once an orchestrator has retired
   the implementer and removed its worktree, treat that worktree as handled — you
   are not the second layer of cleanup for it. If you find an implementer
-  worktree that is DONE, durably-on-origin, and still present, that is a finding
-  against the orchestrator's discipline (raise it), not a task for you to
-  silently absorb.
-- 🔴 **But the pushed branch is NOT "the only artifact that matters".** Authored
+  worktree that is durably-on-origin and still present after the epic or plan
+  has no further task for the implementer, raise it with the orchestrator.
+- 🔴 **Salvage authored agent state before removing the worktree.** Authored
   agent state lives UNTRACKED in the worktree's `.thrum/agents/<self>/`, so it
   is **not on the branch** — every ancestry/push check reads clean while a
   teardown destroys it. **Salvage-before-remove is required, and if you are the

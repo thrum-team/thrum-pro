@@ -15,9 +15,8 @@
 #   Read roster from watch_params.json -> resolve each roster member's
 #   cross-daemon SSH-fallback target ONCE per run (thrum state
 #   agent_pool/topology; fail CLOSED on any gap, never guess a path) ->
-#   capture each member's pane (local `thrum tmux capture` first, ALWAYS —
-#   `thrum tmux capture <agent>` already reaches remote agents by name via
-#   the normal rpcrouter proxy; the SSH hop below is a resilience FALLBACK
+#   capture each member's pane (`thrum tmux capture` first, with a qualified
+#   address for remote roster members; the SSH hop below is a resilience FALLBACK
 #   for when that path is broken on the caller's side, e.g. known
 #   cross-daemon proxy-routing bug classes, never a fleet-wide-watching enabler in its own
 #   right, and never SSH-first) -> run each capture through `thrum detect
@@ -256,7 +255,7 @@ resolve_entry() {
   esac
 }
 
-# The roster entry and each declared entry (with the roster entry's name half) are resolved to an agent by the same
+# The roster entry and each relevant declared entry are resolved to an agent by the same
 # rules, then the agent IDs are compared: a bare roster `alice` is excused by a declared `alice@d1` when d1 is this
 # daemon or alice is unique, not when it resolves to another daemon's alice; an ambiguous declared entry excuses
 # nothing. An entry that matches no team row (an agent that is gone, or the team unreadable) can only be excused
@@ -264,7 +263,9 @@ resolve_entry() {
 is_declared_inactive() {
   local want="$1" d wst="" wid=""
   for d in ${DECLARED_INACTIVE[@]+"${DECLARED_INACTIVE[@]}"}; do
-    [ "${d%%@*}" = "${want%%@*}" ] || continue
+    # Mixed forms can have different written names and still resolve to the same ID.
+    [[ "$d" != "$want" && "$d" != *@* && "$want" != *@* ]] && continue
+    [[ "$d" != "$want" && "$d" == *@* && "$want" == *@* ]] && continue
     if [ -z "${wst}" ]; then
       resolve_entry "${want}"
       wst="${RES_STATUS}"

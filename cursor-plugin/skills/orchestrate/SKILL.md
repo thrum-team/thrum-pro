@@ -192,9 +192,11 @@ thrum tmux launch <name> --runtime <runtime> --model <model from list-role-model
 Never ask the user for a model or effort, and never launch without them: run
 `thrum config list-role-models --runtime <runtime> --role implementer` and pass exactly what it returns.
 
-> **Implementer lifecycle:** All implementers are ephemeral+stateless (no agent folder). At NORMAL epic completion AND
-> at a tier-swap, retire the agent with `thrum agent set-phase retired --agent <name>` — this RETAINS the registry row
-> (phase=retired) so the agent stays visible in the Retired tab + auditable. ⚠️ **"Folderless" refers to the registry,
+> **Implementer lifecycle:** All implementers are ephemeral+stateless (no agent folder). Retire an implementer
+> when its epic or plan has no further task for it, or when a tier-swap replaces it. Run
+> `thrum agent set-phase retired --agent <name>` to retain the registry row (phase=retired) for audit in the Retired tab.
+>
+> ⚠️ **"Folderless" refers to the registry,
 > NOT the worktree: a worktree still carries UNTRACKED `.thrum/` state that must be salvaged before any teardown (see
 > Step 5) — enumerate the WHOLE `.thrum` pathspec, not just `.thrum/agents/`; the preamble sits in `.thrum/context/`.**
 > `thrum agent delete` is operator-only (gated to the coordinator) and is NOT an orchestrator tool — never use it for
@@ -519,10 +521,10 @@ After resolution, continue the merge loop.
 
 **D. Check the final HEAD, then push and clean up:**
 
-After all epic merges and conflict edits, run the project's required gate, build
-and test commands on the final HEAD (the `per_landing` commands in
-`.thrum/policy/gates.json`, or the project's documented test command if that file
-is absent). Record the SHA you checked and each command's outcome. Push only if
+After all epic merges and conflict edits, run the project's build, lint and
+non-race test commands (on each touched package)
+on the final HEAD; the gate runs race.
+Record the SHA you checked and each command's outcome. Push only if
 every required check passed; a failed or incomplete check stops the push. If you
 edit anything after the check, re-run it on the resulting HEAD before pushing. A
 gate run that already covers this exact SHA and the same checks satisfies this.
@@ -551,13 +553,15 @@ tracking bundle for it is completed — `thrum queue done <bundle>` then `thrum 
 retires the agent. A retired agent with a live bundle is completed-but-open rot. (The implementer's OWN queue dies with
 the agent; this is your tracking bundle.)
 
-After merge completes, **remove each implementer's worktree now — do not
-leave it for a later coordinator audit.** Once an agent has exited, its
-in-session context is gone and unrecoverable; the pushed branch is the only
-artifact worth keeping, and by Step 4D above it is already merged into
-`<merge-target>` and pushed. **Scope: implementers only.** Brainstormer and
-researcher worktrees are kept (ongoing design-doc value) — do not apply this
-step to them.
+Retire an implementer and remove its worktree yourself only when its epic or plan has no further task
+for it; do not defer that to a later coordinator audit. Between tasks of the same epic or plan, keep the
+implementer running and give it the next task; remove only the worktree of a branch that has landed.
+Keep the planned number of implementers filled: replace a seat that stalls or retires. Scope:
+implementers only; brainstormer and researcher worktrees are kept.
+
+Once an agent has exited, its in-session context is gone and unrecoverable.
+By Step 4D, the branch is already merged into `<merge-target>` and pushed.
+Keep brainstormer and researcher worktrees for their ongoing design-doc value.
 
 🔴 **BUT SALVAGE UNTRACKED AGENT STATE BEFORE REMOVING.**
 **Not keeping the tree is not the same as having nothing to save.** Restart
@@ -580,6 +584,8 @@ loop):**
 git merge-base --is-ancestor <branch-tip-sha> origin/<merge-target>   # already merged
 git ls-remote origin refs/heads/<branch-name>                          # ref exists on origin (NOT origin/<branch> — that's a local fetch cache)
 ```
+
+When retiring an implementer:
 
 ```bash
 # Kill the tmux session first
@@ -651,6 +657,8 @@ printf 'x' > /tmp/ctl-differs
 cmp -s /tmp/x /tmp/ctl-differs; echo "rc=$? (must be NON-ZERO — proves cmp CAN detect a difference)"
 cmp -s /tmp/x /tmp/x;           echo "rc=$? (must be 0 — proves cmp CAN affirm)"
 ```
+
+When removing a retired implementer's landed worktree:
 
 ```bash
 # Remove the worktree (never rm -rf) — only after BOTH checks are clean and

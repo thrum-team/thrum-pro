@@ -37,7 +37,8 @@
 
 | Target                        | Routing                                          | When to use                     |
 | ------------------------------ | ------------------------------------------------- | -------------------------------- |
-| `--to @lead_agent`             | **Direct** — routes to the named agent            | Default for all task messages   |
+| `--to @lead_agent`             | **Direct** — routes to the named local agent      | Local task messages             |
+| `--to @name@handle`            | **Peer** — routes to the qualified agent          | Cross-daemon task messages      |
 | `--to @agent_a --to @agent_b`  | **Explicit multi-recipient** — repeatable `--to`  | Several specific named agents   |
 
 **(P0 ruling):** one-to-many fan-out — `--broadcast`,
@@ -45,8 +46,8 @@
 out to every agent with that role) — was removed by design across the whole
 product. Do not restore it. `--to` and `--mention` only resolve exact agent
 IDs now; a bare role name that is not also an agent ID matches nobody. Use
-`thrum team` to find agent names, then send `--to @<name>` for direct
-messages, or address a scoped agent-type group for a fixed, explicit set of
+`thrum team` to find agent addresses. Use `@name@daemon-id` when the handle is
+ambiguous, or address a scoped agent-type group for a fixed, explicit set of
 recipients.
 
 - **Reply:** `thrum reply <msg-id>` — same audience as original; takes **no

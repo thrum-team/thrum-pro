@@ -113,6 +113,8 @@ fi
 # these paths itself.
 BRIEFING_SPLIT_MARKER='<!-- thrum:briefing-split -->'
 BRIEFING_INLINE_MAX=9000
+PREAMBLE_NOTICE='Your role preamble was loaded into your system prompt at launch; do not read it again unless it was re-rendered since.'
+(set -o pipefail; perl -MPOSIX=setpgid -e '$p=fork // exit 1; $p or do { defined setpgid(0,0) or exit 1; exec @ARGV or exit 1 }; $SIG{ALRM}=sub { kill "KILL", -$p, $p }; alarm 1; waitpid($p,0) == $p or exit 1; exit($? != 0)' thrum agent preamble-in-prompt "$AGENT_ID" </dev/null 2>/dev/null | cmp -s - <(printf '%s\n' "$PREAMBLE_NOTICE")) || PREAMBLE_NOTICE=""
 SPLIT_FIRST_LINE=""
 if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFING_INLINE_MAX" ]; then
   _split_wrapped=$'\n'"$PRIME_OUTPUT"$'\n'
@@ -136,7 +138,10 @@ if [ "$(printf '%s' "$PRIME_OUTPUT" | LC_ALL=C wc -c | tr -d ' ')" -gt "$BRIEFIN
       if [ "$_split_ok" -eq 1 ]; then
         _split_inline=${_split_wrapped%%"$_split_marker_line"*}
         PRIME_OUTPUT=${_split_inline#$'\n'}
-        if [ -n "$_split_project" ]; then
+        if [ -n "$PREAMBLE_NOTICE" ]; then
+          SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below.${_split_project:+ Read the Project State file ${_split_project}.} Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
+          SPLIT_FIRST_LINE="$SPLIT_FIRST_LINE $PREAMBLE_NOTICE"
+        elif [ -n "$_split_project" ]; then
           SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below. Your first action is to read your role preamble ${_split_preamble} and the Project State file ${_split_project}. Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
         else
           SPLIT_FIRST_LINE="The briefing was SPLIT: only its inline part is below. Your first action is to read your role preamble ${_split_preamble}. Other reference sections (State.md, Past Sessions, messaging protocol) are omitted from this output."
@@ -174,7 +179,7 @@ RESTART_PREAMBLE=""
 if [ -z "$SPLIT_FIRST_LINE" ] && grep -q '^# Previous Session Context' <<<"$PRIME_OUTPUT"; then
   append_to RESTART_PREAMBLE '# 🛑 ACTION REQUIRED — you left yourself a Resume Plan'$'\n'
   append_to RESTART_PREAMBLE $'\n'
-  append_to RESTART_PREAMBLE 'Before anything else, go to the **`# Previous Session Context`** section below, read its **`## Resume Plan`** (or its final next-actions section) in full, and execute the numbered steps in order. If the briefing was truncated or persisted to a file, first read the whole file with your file-reading tool, every page in order (if there is no file, run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime` once and read its output fully) ONCE and read that file; never repeat the prime command), do not jump to the Resume Plan, and name one fact from it before acting.'
+  append_to RESTART_PREAMBLE 'Before anything else, go to the **`# Previous Session Context`** section below, read its **`## Resume Plan`** (or its final next-actions section) in full, and execute the numbered steps in order. If the briefing was truncated or persisted to a file, first read the whole file with your file-reading tool, every page in order (do not repeat the prime command: a second prime cannot redeliver your restart snapshot), do not jump to the Resume Plan, and name one fact from it before acting.'
   append_to RESTART_PREAMBLE $'\n'
   append_to RESTART_PREAMBLE $'\n'
   append_to RESTART_PREAMBLE '> ⚠️ **If this briefing was persisted to a `tool-results/*.txt` file instead of delivered inline, read it with the `Read` tool (use `offset`/`limit` to page through it) — NOT with `sed`, `grep`, `head`, `tail`, or `cat` via Bash.**'$'\n'

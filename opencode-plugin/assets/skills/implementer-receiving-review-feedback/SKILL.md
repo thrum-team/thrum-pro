@@ -108,7 +108,7 @@ merges work the coordinator hasn't seen.
 
 1. Fix only what the findings ask for
 2. Don't refactor, rename, or "improve" surrounding code
-3. Verify tests pass with `-race`
+3. Verify tests pass on the norace lane (race lanes belong to the gates)
 4. Commit and ping with the per-finding disposition format from
    `implementer-status-and-handoff`
 

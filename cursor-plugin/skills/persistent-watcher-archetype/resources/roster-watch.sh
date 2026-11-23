@@ -904,12 +904,13 @@ for entry in data.get("roster", []):
 # the resulting agent IDs are compared: a bare roster `alice` is excused by a declared `alice@d1` when d1 is this
 # daemon or alice is unique, not when it resolves to another daemon's alice; an ambiguous declared entry (reported
 # by roster_member) excuses nothing. An entry that matches no team row (an agent that is gone, or the team
-# unreadable) can only be excused by the identical string. Only a declared entry with the roster entry's name
-# half is resolved.
+# unreadable) can only be excused by the identical string.
 is_declared_inactive() {
   local want="$1" d wst="" wid=""
   for d in ${DECLARED_INACTIVE[@]+"${DECLARED_INACTIVE[@]}"}; do
-    [ "${d%%@*}" = "${want%%@*}" ] || continue
+    # Mixed forms can have different written names and still resolve to the same ID.
+    [[ "$d" != "$want" && "$d" != *@* && "$want" != *@* ]] && continue
+    [[ "$d" != "$want" && "$d" == *@* && "$want" == *@* ]] && continue
     if [ -z "$wst" ]; then
       team_rows_for "$want"
       roster_member team "$want" @id < <(printf '%s' "$TEAM_ROWS")
@@ -938,8 +939,8 @@ is_ambiguous_entry() {
 
 # ---------------------------------------------------------------------------
 # run_capture_cycle — one full roster pass: local capture first (always;
-# `thrum tmux capture <agent>` already reaches remote agents by name via
-# the normal proxy), SSH fallback only on a known capability-denied/proxy-
+# use qualified addresses for remote roster members), SSH fallback only on a
+# known capability-denied/proxy-
 # failure signature, DEGRADED-KNOWN/hard-FAIL classification via the
 # shared probe_agent, and a GHOST-TIP annotation pass per agent. Writes
 # the whole roster to $FILE. Populates the global FAILED/DEGRADED/CAPTURED
@@ -991,7 +992,7 @@ run_capture_cycle() {
       session=$(resolve_session "$a")
       # capture_daemon_overrides (watch_params.json, optional, default empty
       # -> inert): routes this agent's capture through a specific daemon
-      # instead of the normal proxy-by-name resolution, for the rare
+      # instead of normal address resolution, for the rare
       # cross-daemon deployment where that's required. See load_roster.
       if [ "${USE_JEV:-0}" = "1" ]; then
         primary_capture_file="$primary_json_file"

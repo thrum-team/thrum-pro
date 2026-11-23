@@ -58,6 +58,9 @@ no session end. Exit code 1.
 
 Invoke the $thrum:snapshot-protocol skill and follow it.
 
+The snapshot's first line is the `ON RESUME` header from snapshot-protocol
+(above §1; its "(or: you WOKE from sleep)" wording covers sleep).
+
 Apply its Step 2 (compose your continuation) per the structure guidance.
 
 **Use the 16-section structure.** The structure block is `§1.` through `§16.`

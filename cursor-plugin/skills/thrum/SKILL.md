@@ -1,7 +1,7 @@
 ---
 name: thrum
 description: "Multi-agent coordination via messaging, groups, and shared context. Use when agents need to communicate, delegate work, or coordinate across worktrees."
-version: "1.2.0"
+version: "0.10.6"
 license: "Apache-2.0"
 ---
 
@@ -11,9 +11,8 @@ Run `thrum prime` for full session context (auto-injected by the SessionStart
 hook; also fires on post-compact resume). PreCompact is not registered — use
 `/thrum-compact` to save a snapshot before deliberately compacting.
 
-If the prime output was truncated, run `thrum prime --to-file` (if --to-file is an unknown flag, run plain `thrum prime`
-once and read its output fully)
-ONCE and read that file page by page; never re-run `thrum prime` to page through it.
+If the prime output was truncated, read the full briefing, page by page
+(the briefing file if a path was printed); a second prime cannot redeliver your restart snapshot.
 
 ## Quick Command Reference
 
