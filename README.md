@@ -1,5 +1,5 @@
 # Thrum Pro
-> **This is the release-candidate (`rc`) branch. It serves plugin 1.2.0-rc.5.1, which matches thrum binary v1.2.0-rc.5.**
+> **This is the release-candidate (`rc`) branch. It serves plugin 1.2.0-rc.5.1. The thrum binary release candidate it was built for has been withdrawn; the next 1.2 release candidate is coming. Until then, use the stable release (v1.1.2).**
 > The default marketplace reads `main` (the stable plugin). To get the rc plugin:
 >
 > **Claude Code**
